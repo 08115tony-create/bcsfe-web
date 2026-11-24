@@ -217,7 +217,7 @@ footer a{color:var(--ink2)}
 <div class="wrap">
 
   <div class="intro">
-    <h1>🐱 貓咪大戰爭存檔編輯器</h1>
+    <h1>貓咪大戰爭存檔編輯器</h1>
     <p>輸入遊戲裡的轉移號碼與認證號碼，透過 BCSFE 後端下載存檔，在這裡視覺化改好罐頭、券券、貓咪、寶物與進度，最後按右下角「確認並上傳」，就能拿到一組真的新號碼帶回遊戲。貓咪、型態與關卡資料全部以載入當下後端回傳的當版遊戲資料為準，遊戲更新後會自動跟進。</p>
     <div class="steps">
       <div class="step on" id="step1"><b>1</b>連接後端・下載</div>
@@ -288,7 +288,7 @@ footer a{color:var(--ink2)}
     <p class="sub" id="acctSub">已載入存檔，可以開始修改了。</p>
     <div class="acct">
       <div class="cell"><div class="k">遊戲版本</div><div class="v" id="ovVer" style="font-size:16px">—</div></div>
-      <div class="cell"><div class="k">查詢碼（遮罩）</div><div class="v num" id="ovInquiry" style="font-size:15.5px">—</div></div>
+      <div class="cell"><div class="k">詢問碼</div><div class="v num" id="ovInquiry" style="font-size:15.5px">—</div><button class="btn btn-ghost btn-small" id="btnCopyInquiry" onclick="copyInquiry()" type="button" style="margin-top:6px">📋 複製詢問碼</button></div>
       <div class="cell"><div class="k">持有貓咪</div><div class="v"><span class="num" id="ovCats">—</span> <small id="ovCatsTotal"></small></div></div>
       <div class="cell"><div class="k">貓罐頭</div><div class="v num" id="ovFood">—</div></div>
     </div>
@@ -492,7 +492,7 @@ function countDiff(a, b, path){
   return n;
 }
 /* 後端網址：管理員可把部署好的雲端後端寫死在這裡，別人開連結就免設定 */
-var DEFAULT_BACKEND_URL = "";
+var DEFAULT_BACKEND_URL = "https://bcsfe-backend.onrender.com";
 function backendBase(){
   var v = "";
   try{ v = localStorage.getItem("bcsfe_backend_url") || ""; }catch(e){}
@@ -501,7 +501,7 @@ function backendBase(){
 }
 function api(path, opts){
   var base = backendBase();
-  if(!base) return Promise.reject(new Error("尚未設定後端網址，請先在「後端連線設定」填入並測試連線。"));
+  if(!base) return Promise.reject(new Error("尚未設定後端網址，後端還沒部署好，請稍後再試。"));
   return fetch(base + path, opts).then(function(r){
     return r.json().catch(function(){ return { ok:false, error:"bad_response", hint:"後端回應不是 JSON（HTTP " + r.status + "）" }; })
       .then(function(j){ j._http = r.status; return j; });
@@ -757,6 +757,17 @@ function updateOverview(){
   $("#ovCatsTotal").textContent = M.cats.length ? ("/ " + M.cats.length + " 隻") : "";
   $("#ovFood").textContent = fmt(M.scalars.catfood||0);
 }
+function copyInquiry(){
+  if(!meta.inquiry){ toast("⚠️ 還沒有詢問碼：請先下載存檔"); return; }
+  var done = function(){ toast("✅ 已複製詢問碼：" + meta.inquiry); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(meta.inquiry).then(done, function(){ toast("⚠️ 複製失敗，請手動選取複製"); });
+  } else {
+    var ta = document.createElement("textarea"); ta.value = meta.inquiry; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch(e){ toast("⚠️ 複製失敗，請手動選取複製"); }
+    document.body.removeChild(ta);
+  }
+}
 function updateBar(){
   var n = dirtyCount();
   $("#barStatus").innerHTML = !loaded ? "尚未載入存檔" :
@@ -839,14 +850,14 @@ function modelFromBackend(save, summary){
     if(L.cat_level_max) MAXV.cat_level = L.cat_level_max;
     if(L.cat_plus_max) MAXV.cat_plus = L.cat_plus_max;
   }
-  meta.inquiry = (summary && summary.inquiry_code_masked) || "";
+  meta.inquiry = (summary && (summary.inquiry_code || summary.inquiry_code_masked)) || "";
   meta.gvStr = (summary && summary.game_version_str) || "";
   meta.cc = (summary && summary.cc) || meta.ver;
   return m;
 }
 function doDownload(){
   var err = $("#connectErr"); err.classList.remove("show");
-  if(!backendBase()){ err.textContent = "⚠️ 尚未設定後端網址：請先在上方「後端連線設定」填入後端網址並測試連線。GitHub Pages 本身無法直接連遊戲伺服器。"; err.classList.add("show"); $("#backendCard").scrollIntoView({behavior:"smooth"}); return; }
+  if(!backendBase()){ err.textContent = "⚠️ 後端尚未設定，請稍後再試。"; err.classList.add("show"); return; }
   var tc = $("#transferCode").value.replace(/\D/g,"");
   var cc = $("#confirmCode").value.replace(/\D/g,"");
   if(tc.length < 8){ err.textContent = "⚠️ 轉移號碼不完整：請輸入遊戲給的完整轉移號碼。"; err.classList.add("show"); return; }
@@ -993,6 +1004,8 @@ function doConfirm(){
 
 /* ================= 事件 ================= */
 document.addEventListener("DOMContentLoaded", function(){
+  /* 給別人版：預設藏起「後端連線設定」，後端直接用預設網址；擁有者開 ?showBackend=1 才顯示 */
+  try{ if(location.search.indexOf("showBackend") === -1){ var _bc = document.getElementById("backendCard"); if(_bc) _bc.style.display = "none"; } }catch(e){}
   /* 後端設定 */
   try{ var saved = localStorage.getItem("bcsfe_backend_url"); if(saved) $("#backendUrl").value = saved; }catch(e){}
   if(!$("#backendUrl").value && DEFAULT_BACKEND_URL) $("#backendUrl").value = DEFAULT_BACKEND_URL;
