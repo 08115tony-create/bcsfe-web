@@ -267,6 +267,11 @@ footer a{color:var(--ink2)}
         </select>
         <div class="hint">日本版送出時會自動轉成 ja；國際版 en 包含 it／es／fr／th／de 語系，存檔格式相同，一樣選 en。</div>
       </div>
+      <div class="field">
+        <label for="accessKey">使用密碼</label>
+        <input class="code" id="accessKey" type="password" autocomplete="off" placeholder="問網站主人拿">
+        <div class="hint">只有知道密碼的人能下載；密碼會記在你的瀏覽器裡，下次不用重打</div>
+      </div>
     </div>
     <button class="btn btn-primary" id="btnDownload">⬇️ 接收帳號資料（下載存檔）</button>
     <div class="err" id="connectErr"></div>
@@ -887,6 +892,8 @@ function doDownload(){
   if(!tc){ err.textContent = "⚠️ 請輸入轉移號碼。"; err.classList.add("show"); return; }
   if(cc.length !== 4){ err.textContent = "⚠️ 認證號碼要是 4 碼數字，請再檢查一次。"; err.classList.add("show"); return; }
   /* 轉移號碼長度不由前端硬擋：只要有輸入就送後端，由遊戲伺服器判斷對錯，錯了會回「號碼錯誤或已失效」 */
+  var ak = ($("#accessKey").value || "").trim();
+  try{ if(ak) localStorage.setItem("bcsfe_access_key", ak); }catch(e){}
   meta.transfer = tc; meta.ver = $("#gameVer").value;
   var ccSend = meta.ver === "jp" ? "ja" : meta.ver;   /* 日本版傳給伺服器時轉成 ja */
   var btn = $("#btnDownload"); btn.disabled = true; btn.textContent = "下載中…（雲端後端休眠時要等約 1 分鐘）";
@@ -894,7 +901,7 @@ function doDownload(){
   $("#dlMsg").textContent = "透過後端連線到遊戲伺服器下載存檔…";
   $("#dlBar").style.width = "45%";
   api("/api/download", { method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ transfer_code: tc, confirmation_code: cc, cc: ccSend }) })
+    body: JSON.stringify({ transfer_code: tc, confirmation_code: cc, cc: ccSend, access_key: ak }) })
   .then(function(j){
     if(!j.ok) throw new Error(errText(j));
     sessionId = j.session_id;
@@ -1055,6 +1062,8 @@ document.addEventListener("DOMContentLoaded", function(){
   try{ if(location.search.indexOf("showBackend") === -1){ var _bc = document.getElementById("backendCard"); if(_bc) _bc.style.display = "none"; } }catch(e){}
   /* 後端設定 */
   try{ var saved = localStorage.getItem("bcsfe_backend_url"); if(saved) $("#backendUrl").value = saved; }catch(e){}
+  /* 使用密碼：上次打過的會記在瀏覽器裡，下次不用重打 */
+  try{ var savedKey = localStorage.getItem("bcsfe_access_key"); if(savedKey) $("#accessKey").value = savedKey; }catch(e){}
   if(!$("#backendUrl").value && DEFAULT_BACKEND_URL) $("#backendUrl").value = DEFAULT_BACKEND_URL;
   function bkMsg(ok, msg){
     $("#bkDot").className = "dotst " + (ok ? "ok" : "bad");
