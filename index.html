@@ -249,7 +249,7 @@ footer a{color:var(--ink2)}
     <div class="connect-grid">
       <div class="field">
         <label for="transferCode">轉移號碼</label>
-        <input class="code" id="transferCode" inputmode="numeric" autocomplete="off" placeholder="9 碼數字" maxlength="12">
+        <input class="code" id="transferCode" inputmode="numeric" autocomplete="off" placeholder="9 碼數字" maxlength="20">
         <div class="hint">遊戲畫面上方那組數字</div>
       </div>
       <div class="field">
@@ -858,10 +858,13 @@ function modelFromBackend(save, summary){
 function doDownload(){
   var err = $("#connectErr"); err.classList.remove("show");
   if(!backendBase()){ err.textContent = "⚠️ 後端尚未設定，請稍後再試。"; err.classList.add("show"); return; }
-  var tc = $("#transferCode").value.replace(/\D/g,"");
-  var cc = $("#confirmCode").value.replace(/\D/g,"");
-  if(tc.length < 8){ err.textContent = "⚠️ 轉移號碼不完整：請輸入遊戲給的完整轉移號碼。"; err.classList.add("show"); return; }
+  /* 全形數字（中文輸入法常會打出 ０-９）先轉半形再取數字，不然會被誤判為空白 */
+  var normDigits = function(s){ return (s || "").replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/\D/g,""); };
+  var tc = normDigits($("#transferCode").value);
+  var cc = normDigits($("#confirmCode").value);
+  if(!tc){ err.textContent = "⚠️ 請輸入轉移號碼。"; err.classList.add("show"); return; }
   if(cc.length !== 4){ err.textContent = "⚠️ 認證號碼要是 4 碼數字，請再檢查一次。"; err.classList.add("show"); return; }
+  /* 轉移號碼長度不由前端硬擋：只要有輸入就送後端，由遊戲伺服器判斷對錯，錯了會回「號碼錯誤或已失效」 */
   meta.transfer = tc; meta.ver = $("#gameVer").value;
   var ccSend = meta.ver === "jp" ? "ja" : meta.ver;   /* 日本版傳給伺服器時轉成 ja */
   var btn = $("#btnDownload"); btn.disabled = true; btn.textContent = "下載中…（雲端後端休眠時要等約 1 分鐘）";
