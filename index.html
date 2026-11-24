@@ -366,7 +366,7 @@ footer a{color:var(--ink2)}
     <div class="card panel" data-panel="cats">
       <div class="cat-tools">
         <input type="search" id="catSearch" placeholder="🔍 搜尋貓咪名稱或編號…">
-        <select id="catFilter"><option value="all">全部</option><option value="owned">已解鎖</option><option value="locked">未解鎖</option></select>
+        <select id="catFilter"><option value="all">全部</option><option value="owned">已解鎖</option><option value="locked">未解鎖</option><option value="r0">基本</option><option value="r1">EX</option><option value="r2">稀有</option><option value="r3">激稀有</option><option value="r4">超激稀有</option><option value="r5">傳說稀有</option></select>
         <button class="btn btn-ghost btn-small" id="btnLoadNames">載入其餘貓名</button>
         <button class="btn btn-ghost btn-small" id="btnAllCats">全選解鎖</button>
         <button class="btn btn-ghost btn-small" id="btnNoCats">全部移除</button>
@@ -555,6 +555,7 @@ var BASE_MATS = [["🧱","磚塊"],["🪶","羽毛"],["⬛","煤炭"],["⚙️",
 /* 貓薄荷：9 種顏色，順序照後端陣列（紅、綠、藍、黃、紫、金、惡魔、彩虹、古代），每種 種子→果實 */
 var FRUIT_COLORS = [["🔴","紅色"],["🟢","綠色"],["🔵","藍色"],["🟡","黃色"],["🟣","紫色"],["🌕","金色"],["😈","惡魔"],["🌈","彩虹"],["🏺","古代"]];
 var FORM_NAMES = ["第一型態","第二型態","真型態","第四型態"];
+var RARITY_NAMES = ["基本","EX","稀有","激稀有","超激稀有","傳說稀有"];
 var TRE_NAMES = ["無","銅","銀","金"];
 var MODE_NAMES = { aku:"魔界篇", outbreaks:"不死篇（殭屍襲擊）", legend_quest:"舊傳說（傳奇任務）", uncanny:"真傳說", zero_legends:"零傳說" };
 
@@ -685,20 +686,31 @@ function renderCats(){
   var q = ($("#catSearch").value || "").trim().toLowerCase();
   var f = $("#catFilter").value;
   var owned = M.cats.filter(function(c){ return c.unlocked; }).length;
-  $("#catCountNote").textContent = "共 " + M.cats.length + " 隻貓（依載入存檔的當版遊戲資料），已解鎖 " + owned + " 隻。" + (mode==="demo" ? "目前是範例存檔，名單為範例。" : "名稱與型態以目前版本（" + (meta.ver||"").toUpperCase() + "）的遊戲資料為準。");
+  $("#catCountNote").textContent = "共 " + M.cats.length + " 隻貓，已解鎖 " + owned + " 隻。" + (mode==="demo" ? "目前是範例存檔（台版圖鑑，共 888 隻，名稱與型態以台版為準，日版不同），不能上傳到遊戲。" : "名稱與型態以目前版本（" + (meta.ver||"").toUpperCase() + "）的遊戲資料為準；可編輯的以存檔內的貓咪為準。");
   $("#catGrid").innerHTML = M.cats.map(function(c, i){
     if(f === "owned" && !c.unlocked) return "";
     if(f === "locked" && c.unlocked) return "";
-    if(q && ((c.name||"").toLowerCase().indexOf(q) === -1 && String(c.id).indexOf(q) === -1)) return "";
-    var formOpts = function(cur){ return FORM_NAMES.map(function(fn, fi){ return '<option value="'+fi+'"'+(cur===fi?" selected":"")+'>'+fn+'</option>'; }).join(""); };
+    if(f && f.charAt(0) === "r" && c.rarity_idx !== null && c.rarity_idx !== undefined && c.rarity_idx !== +f.slice(1)) return "";
+    var allNames = ((c.form_names || []).concat([c.name || ""])).join(" ").toLowerCase();
+    if(q && (allNames.indexOf(q) === -1 && String(c.id).indexOf(q) === -1)) return "";
+    /* 型態下拉顯示該貓真正的型態名稱（例如 姆特貓／狂亂姆特貓／覺醒姆特貓），沒有圖鑑資料時才用通用名稱 */
+    var forms = (c.form_names && c.form_names.length) ? c.form_names : FORM_NAMES;
+    var formOpts = function(cur){ return forms.map(function(fn, fi){ return '<option value="'+fi+'"'+(cur===fi?" selected":"")+'>'+esc(fn)+'</option>'; }).join(""); };
+    var unlockOpts = function(cur){
+      var opts = '<option value="0"'+(cur===0?" selected":"")+'>未解鎖</option>';
+      forms.forEach(function(fn, fi){ opts += '<option value="'+(fi+1)+'"'+(cur===fi+1?" selected":"")+'>已解鎖至「'+esc(fn)+'」</option>'; });
+      return opts;
+    };
+    var maxNote = (c.max_base ? "最高 Lv " + c.max_base + " +" + (c.max_plus || 0) : "");
     return '<div class="cat'+(c.unlocked?" owned":"")+'">'+
       '<button class="own" data-own="'+i+'" aria-label="解鎖切換">✓</button>'+
       '<div class="cid">編號 '+c.id+'</div><div class="cname">'+esc(c.name || ("貓咪 #"+c.id))+'</div>'+
       (c.rarity ? '<span class="rar">'+esc(c.rarity)+'</span>' : '')+
+      (maxNote ? '<div class="cmeta" style="font-size:12px;color:var(--ink3)">'+maxNote+'</div>' : '')+
       '<div class="lvrow"><label>Lv</label><input class="num" type="number" min="1" max="'+MAXV.cat_level+'" data-catlv="'+i+'" value="'+c.level+'">'+
       '<label>+</label><input class="num" type="number" min="0" max="'+MAXV.cat_plus+'" data-catplus="'+i+'" value="'+c.plus+'"></div>'+
       '<div class="frow"><div><label>目前型態</label><select data-catform="'+i+'">'+formOpts(c.current_form)+'</select></div>'+
-      '<div><label>已解鎖型態</label><select data-catunlockform="'+i+'">'+formOpts(c.unlocked_forms)+'</select></div></div></div>';
+      '<div><label>已解鎖型態</label><select data-catunlockform="'+i+'">'+unlockOpts(c.unlocked_forms)+'</select></div></div></div>';
   }).join("") || '<p class="sub">找不到符合的貓咪。</p>';
   updateOverview();
 }
@@ -827,7 +839,15 @@ function modelFromBackend(save, summary){
     });
   }
   m.cats = (save.cats || []).map(function(c){
-    return { id:c.id, name:c.name || null, rarity: c.rarity || null, unlocked: !!c.unlocked,
+    var rIdx = null;
+    if(typeof c.rarity === "number") rIdx = c.rarity;
+    else if(/^[0-5]$/.test(String(c.rarity || ""))) rIdx = +c.rarity;
+    else if(c.rarity_name) rIdx = RARITY_NAMES.indexOf(c.rarity_name);
+    return { id:c.id, name:c.name || null, form_names: c.form_names || null,
+      rarity: c.rarity_name || (rIdx !== null && rIdx >= 0 ? RARITY_NAMES[rIdx] : (c.rarity || null)),
+      rarity_idx: (rIdx !== null && rIdx >= 0) ? rIdx : null,
+      max_base: c.max_base || null, max_plus: c.max_plus || null,
+      unlocked: !!c.unlocked,
       level: c.level || 1, plus: c.plus || 0, current_form: c.current_form || 0,
       unlocked_forms: c.unlocked_forms || 0, fourth_form: c.fourth_form || 0 };
   });
@@ -897,7 +917,9 @@ function doDownload(){
     err.textContent = "⚠️ " + e.message; err.classList.add("show");
   });
 }
-/* 範例存檔：只預覽介面，資料是範例、不是任何版本的真實遊戲資料 */
+/* 範例存檔：只預覽介面，資料是範例、不是任何版本的真實遊戲資料。
+   貓咪改用後端圖鑑（台版共 888 隻，各型態名稱、稀有度、最高等級齊全），
+   不再只有 10 隻範例貓；後端連不上時才退回舊的 10 隻。 */
 function loadDemo(){
   var m = emptyModel();
   m.scalars = { catfood:1250, xp:8500000, np:320, leadership:12, normal_tickets:45, rare_tickets:8, platinum_tickets:1, legend_tickets:0, platinum_shards:30 };
@@ -907,21 +929,41 @@ function loadDemo(){
   m.catseyes = [210,96,74,38,9,4];
   m.baseMaterials = [180,150,132,118,64,47,39,26,8];
   m.battleItems.forEach(function(it, i){ it.amount = [120,85,64,52,71,43][i]; });
-  var demoCats = [["貓咪","基本"],["坦克貓","基本"],["戰鬥貓","基本"],["瓦爾基麗貓","EX"],["巴哈姆特貓","EX"],["搖滾貓","稀有"],["壽司貓","稀有"],["織田信長","超激稀有"],["黑無垢","超激稀有"],["宮本武藏","傳說稀有"]];
-  m.cats = demoCats.map(function(c, i){ return { id:i, name:c[0], rarity:c[1], unlocked: i<7, level: 20+i*3, plus: i*4, current_form: i%3, unlocked_forms: Math.min(3, i%4), fourth_form: 0 }; });
-  var attrs = ["紅色","飄浮","黑色","金屬","天使","異星","殭屍","惡魔","古代"];
-  var effs = ["善攻","耐打","超傷害","減傷","增傷"];
-  var oid = 0;
-  attrs.forEach(function(a){ effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"A", target:a, effect: e }); m.orbs[oid] = oid % 5; oid++; }); });
-  effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"S", target:null, effect: e }); oid++; });
-  var chapNames = ["世界篇 第1章","世界篇 第2章","世界篇 第3章","未來篇 第1章","未來篇 第2章","未來篇 第3章","宇宙篇 第1章","宇宙篇 第2章","宇宙篇 第3章"];
-  m.story = chapNames.map(function(n, ci){ var st = []; for(var i=0;i<48;i++) st.push({ clear: ci<2?1:0, treasure: ci<2 ? (i%4) : 0 }); return { name:n, stages: st }; });
-  m.modes = [ ["aku",46,12],["outbreaks",144,60],["legend_quest",49,20],["uncanny",49,8],["zero_legends",12,3] ].map(function(x){ return { key:x[0], name: MODE_NAMES[x[0]], total:x[1], cleared:x[2], available:true }; });
-  m.gamaXp = 450000; m.gamaHelpers = 14; m.engineers = 9; m.shrineXp = 12000; m.playFrames = 386*3600*30;
-  mode = "demo"; sessionId = null;
-  meta.inquiry = "範例（非真實帳號）"; meta.gvStr = "範例資料"; meta.cc = "tw";
-  M = m;
-  finishLoad("範例存檔（僅預覽介面，不能上傳到遊戲）");
+  var finishDemo = function(catalogCats){
+    if(catalogCats && catalogCats.length){
+      m.cats = catalogCats.map(function(c){
+        return { id:c.id, name:(c.f && c.f[0]) || ("貓咪 #"+c.id), form_names: c.f || [],
+          rarity: RARITY_NAMES[c.r] || "", rarity_idx: c.r,
+          max_base: c.mb, max_plus: c.mp,
+          unlocked: c.id < 7, level: 20 + (c.id % 5) * 5, plus: 0,
+          current_form: 0, unlocked_forms: 1, fourth_form: 0 };
+      });
+    } else {
+      var demoCats = [["貓咪","基本"],["坦克貓","基本"],["戰鬥貓","基本"],["瓦爾基麗貓","EX"],["姆特貓","EX"],["搖滾貓","稀有"],["壽司貓","稀有"],["織田信長","超激稀有"],["黑無垢御靈","超激稀有"],["宮本武藏","傳說稀有"]];
+      m.cats = demoCats.map(function(c, i){ return { id:i, name:c[0], rarity:c[1], rarity_idx: RARITY_NAMES.indexOf(c[1]), unlocked: i<7, level: 20+i*3, plus: i*4, current_form: i%3, unlocked_forms: Math.min(3, i%4), fourth_form: 0 }; });
+    }
+    var attrs = ["紅色","飄浮","黑色","金屬","天使","異星","殭屍","惡魔","古代"];
+    var effs = ["善攻","耐打","超傷害","減傷","增傷"];
+    var oid = 0;
+    attrs.forEach(function(a){ effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"A", target:a, effect: e }); m.orbs[oid] = oid % 5; oid++; }); });
+    effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"S", target:null, effect: e }); oid++; });
+    var chapNames = ["世界篇 第1章","世界篇 第2章","世界篇 第3章","未來篇 第1章","未來篇 第2章","未來篇 第3章","宇宙篇 第1章","宇宙篇 第2章","宇宙篇 第3章"];
+    m.story = chapNames.map(function(n, ci){ var st = []; for(var i=0;i<48;i++) st.push({ clear: ci<2?1:0, treasure: ci<2 ? (i%4) : 0 }); return { name:n, stages: st }; });
+    m.modes = [ ["aku",46,12],["outbreaks",144,60],["legend_quest",49,20],["uncanny",49,8],["zero_legends",12,3] ].map(function(x){ return { key:x[0], name: MODE_NAMES[x[0]], total:x[1], cleared:x[2], available:true }; });
+    m.gamaXp = 450000; m.gamaHelpers = 14; m.engineers = 9; m.shrineXp = 12000; m.playFrames = 386*3600*30;
+    mode = "demo"; sessionId = null;
+    meta.inquiry = "範例（非真實帳號）"; meta.gvStr = "範例資料"; meta.cc = "tw";
+    M = m;
+    finishLoad("範例存檔（僅預覽介面，不能上傳到遊戲）");
+  };
+  if(backendBase()){
+    toast("正在載入台版圖鑑（888 隻貓咪）…");
+    api("/api/catalog?cc=tw").then(function(j){
+      finishDemo(j && j.ok ? j.cats : null);
+    }).catch(function(){ finishDemo(null); });
+  } else {
+    finishDemo(null);
+  }
 }
 
 /* ================= 上傳 ================= */
