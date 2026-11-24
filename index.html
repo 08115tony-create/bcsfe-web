@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>貓咪大戰爭存檔編輯器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f1ea; --bg2:#ece7db; --card:#ffffff; --card2:#faf7f0;
+  --ink:#221d14; --ink2:#5c5546; --ink3:#8a8171;
+  --line:#ddd5c3; --line2:#cbc1ab;
+  --accent:#e8590c; --accent-ink:#ffffff; --accent-soft:#ffe8d6;
+  --yellow:#ffc61a; --yellow-soft:#fff3bf;
+  --green:#2b8a3e; --green-soft:#d3f9d8;
+  --red:#d6336c; --red-soft:#ffe0ec;
+  --blue:#1971c2; --blue-soft:#d3ebff;
+  --chip:#f1ead9;
+  --shadow:0 2px 10px rgba(60,45,10,.08), 0 10px 30px rgba(60,45,10,.06);
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#17181c; --bg2:#101114; --card:#22242a; --card2:#1c1e23;
+    --ink:#f2efe8; --ink2:#b8b2a4; --ink3:#857f70;
+    --line:#363842; --line2:#484b57;
+    --accent:#ff922b; --accent-ink:#241300; --accent-soft:#4a2f14;
+    --yellow:#ffd43b; --yellow-soft:#4a3a08;
+    --green:#51cf66; --green-soft:#173d22;
+    --red:#ff6b9d; --red-soft:#4a1e30;
+    --blue:#4dabf7; --blue-soft:#17344d;
+    --chip:#2c2e36;
+    --shadow:0 2px 10px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+.num{font-family:"Baloo 2","Noto Sans TC",sans-serif;font-variant-numeric:tabular-nums}
+button,[role="button"],select,summary,input:not([type="checkbox"],[type="radio"]){min-height:2.75rem}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 150px}
+a{color:var(--blue)}
+.intro{padding:22px 0 6px}
+.intro h1{font-size:clamp(24px,4.5vw,34px);font-weight:900;margin:0 0 6px;letter-spacing:.01em}
+.intro p{margin:0;color:var(--ink2);font-size:15px;max-width:680px}
+.steps{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.step{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 6px;font-size:13.5px;font-weight:700}
+.step b{width:26px;height:26px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-family:"Baloo 2";font-size:14px;flex:none}
+.step.on b{background:var(--yellow);color:#3a2c00}
+.step.done b{background:var(--green);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-top:16px}
+.card h2{margin:0 0 4px;font-size:18px;font-weight:900;display:flex;align-items:center;gap:9px}
+.card h2 .ic{font-size:20px}
+.card .sub{color:var(--ink2);font-size:13.5px;margin:0 0 14px}
+.connect-grid{display:grid;grid-template-columns:1fr 1fr 190px;gap:12px}
+@media(max-width:720px){.connect-grid{grid-template-columns:1fr 1fr}.connect-grid .ver{grid-column:1/-1}}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:6px}
+.field input,.field select{width:100%;border:1.5px solid var(--line2);border-radius:10px;background:var(--card2);color:var(--ink);font-size:16px;padding:10px 12px;outline:none}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field input.code{letter-spacing:.14em;font-family:"Baloo 2","Noto Sans TC";font-weight:700}
+.field .hint{font-size:12px;color:var(--ink3);margin-top:5px}
+.btn{border:none;border-radius:11px;font-weight:800;font-size:15px;padding:10px 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .08s ease, filter .15s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:var(--accent-ink);width:100%;font-size:16.5px;min-height:52px;margin-top:14px;box-shadow:0 6px 18px rgba(232,89,12,.28)}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-primary:disabled{opacity:.55;cursor:wait}
+.btn-ghost{background:var(--chip);color:var(--ink);border:1px solid var(--line)}
+.btn-small{min-height:40px;padding:6px 14px;font-size:13.5px;border-radius:9px}
+.alt-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.alt-row .sep{color:var(--ink3);font-size:13px}
+.progress{display:none;margin-top:14px}
+.progress.show{display:block}
+.progress .bar{height:8px;background:var(--chip);border-radius:99px;overflow:hidden}
+.progress .bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
+.progress .msg{font-size:13px;color:var(--ink2);margin-top:7px;font-weight:600}
+.err{display:none;margin-top:12px;background:var(--red-soft);color:var(--red);border-radius:10px;padding:10px 14px;font-size:14px;font-weight:700;white-space:pre-line}
+.err.show{display:block}
+.okmsg{display:none;margin-top:12px;background:var(--green-soft);color:var(--green);border-radius:10px;padding:10px 14px;font-size:14px;font-weight:700}
+.okmsg.show{display:block}
+.dotst{width:11px;height:11px;border-radius:50%;background:var(--line2);display:inline-block;flex:none}
+.dotst.ok{background:var(--green)}
+.dotst.bad{background:var(--red)}
+.bk-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.bk-row input{flex:1;min-width:210px;border:1.5px solid var(--line2);border-radius:10px;background:var(--card2);color:var(--ink);font-size:14.5px;padding:9px 12px}
+#accountBar,#quickBar,#editor{display:none}
+#accountBar.show,#quickBar.show,#editor.show{display:block}
+.acct{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:720px){.acct{grid-template-columns:1fr 1fr}}
+.acct .cell{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:10px 13px}
+.acct .k{font-size:12px;color:var(--ink3);font-weight:700}
+.acct .v{font-size:19px;font-weight:800;margin-top:1px;word-break:break-all}
+.acct .v small{font-size:12.5px;color:var(--ink2);font-weight:600}
+.quick-grid{display:flex;gap:9px;flex-wrap:wrap}
+.quick-grid button{background:var(--yellow-soft);border:1px solid var(--yellow);color:var(--ink);border-radius:999px;padding:8px 16px;font-weight:800;font-size:14px;min-height:44px}
+.quick-grid button:active{transform:scale(.96)}
+.quick-grid button.on{background:var(--yellow)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 0}
+.tabs button{border:1.5px solid var(--line2);background:var(--card);color:var(--ink2);border-radius:999px;padding:9px 16px;font-weight:800;font-size:14px;min-height:44px}
+.tabs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.panel{display:none}
+.panel.on{display:block}
+.panel h3{font-size:15px;font-weight:900;margin:20px 0 10px;color:var(--ink)}
+.panel h3:first-child{margin-top:4px}
+.note{font-size:13px;color:var(--ink2);background:var(--card2);border:1px dashed var(--line2);border-radius:10px;padding:9px 13px;margin:10px 0}
+.risk{font-size:12.5px;color:var(--red);font-weight:700}
+.rows{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:720px){.rows{grid-template-columns:1fr}}
+.row-item{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:9px 11px;flex-wrap:wrap}
+.row-item .emoji{font-size:22px;width:38px;height:38px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);border-radius:9px;flex:none}
+.row-item .meta{flex:1;min-width:120px}
+.row-item .name{font-weight:800;font-size:14.5px}
+.row-item .desc{font-size:11.5px;color:var(--ink3)}
+.stepper{display:flex;align-items:center;gap:5px;flex:none}
+.stepper button{width:38px;height:38px;min-height:38px;border-radius:9px;border:1px solid var(--line2);background:var(--card);font-size:18px;font-weight:800;color:var(--ink);display:grid;place-items:center;padding:0}
+.stepper input{width:96px;text-align:center;border:1.5px solid var(--line2);border-radius:9px;background:var(--card);color:var(--ink);font-size:15px;font-weight:700;padding:6px 4px;min-height:38px}
+.maxbtn{border:1px solid var(--line2);background:var(--yellow-soft);border-radius:8px;font-size:11.5px;font-weight:900;padding:4px 8px;min-height:30px;color:var(--ink)}
+.endless{display:flex;gap:6px;align-items:center;width:100%}
+.endless select{border:1.5px solid var(--line2);border-radius:8px;background:var(--card);color:var(--ink);font-size:13px;font-weight:700;padding:5px 7px;min-height:36px}
+.endless input{width:90px;border:1.5px solid var(--line2);border-radius:8px;background:var(--card);color:var(--ink);font-size:13.5px;font-weight:700;padding:5px 7px;min-height:36px;text-align:center}
+.endless span{font-size:12.5px;color:var(--ink3)}
+@media(max-width:420px){.stepper input{width:78px;font-size:13px}.row-item .desc{display:none}}
+.cat-tools{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.cat-tools input[type=search]{flex:1;min-width:160px;border:1.5px solid var(--line2);border-radius:10px;background:var(--card2);color:var(--ink);font-size:15px;padding:9px 12px}
+.cat-tools select{border:1.5px solid var(--line2);border-radius:10px;background:var(--card2);color:var(--ink);font-size:14px;padding:9px 10px;font-weight:700}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.cat{background:var(--card2);border:1.5px solid var(--line);border-radius:12px;padding:11px;position:relative}
+.cat.owned{border-color:var(--green)}
+.cat .cid{font-size:11px;color:var(--ink3);font-weight:700}
+.cat .cname{font-weight:800;font-size:14.5px;margin-top:2px;word-break:break-all}
+.cat .rar{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;display:inline-block;margin-top:3px;background:var(--chip);color:var(--ink2)}
+.cat .lvrow{display:flex;gap:5px;margin-top:8px;align-items:center}
+.cat .lvrow label{font-size:11px;color:var(--ink3);font-weight:700}
+.cat .lvrow input{width:50px;border:1.5px solid var(--line2);border-radius:8px;background:var(--card);color:var(--ink);text-align:center;font-weight:700;font-size:14px;padding:4px 2px;min-height:34px}
+.cat .own{position:absolute;top:9px;right:9px;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line2);background:var(--card);font-size:16px;display:grid;place-items:center;padding:0;color:transparent}
+.cat.owned .own{background:var(--green);border-color:var(--green);color:#fff}
+.cat .frow{margin-top:8px;display:grid;gap:6px}
+.cat .frow label{font-size:11px;color:var(--ink3);font-weight:700;display:block}
+.cat .frow select{width:100%;border:1.5px solid var(--line2);border-radius:8px;background:var(--card);color:var(--ink);font-size:13px;font-weight:700;padding:5px 7px;min-height:36px}
+.orb-tools{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.orb-tools select{border:1.5px solid var(--line2);border-radius:10px;background:var(--card2);color:var(--ink);font-size:14px;padding:9px 10px;font-weight:700}
+.orb-group{font-weight:900;font-size:14px;margin:16px 0 8px}
+.chap{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:12px}
+.chap .chead{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chap .cname{font-weight:900;font-size:15.5px;flex:1;min-width:140px}
+.chap .cmeta{font-size:12.5px;color:var(--ink3);font-weight:700}
+.chap input[type=range]{flex:1;min-width:130px;accent-color:var(--accent)}
+.stage-grid{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.stage-chip{width:40px;height:40px;min-height:40px;border-radius:9px;border:1.5px solid var(--line2);background:var(--card);font-size:11px;font-weight:800;color:var(--ink3);display:grid;place-items:center;padding:0;position:relative}
+.stage-chip.cleared{color:var(--ink);border-color:var(--green)}
+.stage-chip .tnum{position:absolute;bottom:1px;right:4px;font-size:9px}
+.stage-chip[data-t="1"]{background:#e8c39e}
+.stage-chip[data-t="2"]{background:#d7dde3}
+.stage-chip[data-t="3"]{background:#ffd94d;color:#3a2c00}
+.mode-row{display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:9px;flex-wrap:wrap}
+.mode-row .mname{font-weight:800;flex:1;min-width:130px;font-size:14.5px}
+.mode-row .mmeta{font-size:12.5px;color:var(--ink3);font-weight:700}
+.mode-row input[type=range]{flex:1;min-width:120px;accent-color:var(--accent)}
+.tlist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:720px){.tlist{grid-template-columns:1fr}}
+.titem{display:flex;align-items:center;gap:11px;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+.titem .meta{flex:1}
+.titem .name{font-weight:800;font-size:14.5px}
+.titem .desc{font-size:12px;color:var(--ink3)}
+.switch{position:relative;width:52px;height:30px;flex:none}
+.switch input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer}
+.switch .tr{position:absolute;inset:0;background:var(--line2);border-radius:99px;transition:.2s;pointer-events:none}
+.switch .tr::after{content:"";position:absolute;width:24px;height:24px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.switch input:checked + .tr{background:var(--green)}
+.switch input:checked + .tr::after{left:25px}
+.time-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.time-row input{width:84px;text-align:center;border:1.5px solid var(--line2);border-radius:9px;background:var(--card);color:var(--ink);font-size:15px;font-weight:700;padding:7px 4px;min-height:40px}
+.actionbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:color-mix(in srgb, var(--card) 92%, transparent);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+.actionbar .inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.actionbar .status{flex:1;font-size:13.5px;color:var(--ink2);font-weight:600;min-width:0}
+.actionbar .status b{color:var(--ink)}
+.chipdot{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:2px 10px;font-weight:800;font-size:12.5px;margin-left:4px}
+.btn-confirm{background:var(--accent);color:var(--accent-ink);border:none;border-radius:12px;font-weight:900;font-size:16.5px;padding:13px 26px;min-height:54px;box-shadow:0 8px 22px rgba(232,89,12,.32);white-space:nowrap}
+.btn-confirm:disabled{opacity:.45;box-shadow:none;cursor:not-allowed}
+.btn-reset{background:transparent;border:1.5px solid var(--line2);color:var(--ink2);border-radius:11px;font-weight:800;padding:10px 16px;min-height:48px}
+@media(max-width:560px){.btn-reset{display:none}.actionbar .status{font-size:12.5px}}
+.overlay{position:fixed;inset:0;background:rgba(15,12,5,.55);z-index:60;display:none;align-items:flex-end;justify-content:center;padding:0}
+@media(min-width:640px){.overlay{align-items:center;padding:20px}}
+.overlay.show{display:flex}
+.modal{background:var(--card);width:100%;max-width:540px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:24px 22px calc(22px + env(safe-area-inset-bottom))}
+@media(min-width:640px){.modal{border-radius:20px}}
+.modal h2{margin:0 0 4px;font-size:21px;font-weight:900}
+.modal .sub{color:var(--ink2);font-size:14px;margin:0 0 16px}
+.codebox{display:flex;align-items:center;gap:10px;background:var(--card2);border:1.5px dashed var(--line2);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.codebox .k{font-size:12px;color:var(--ink3);font-weight:700;flex:none;width:64px}
+.codebox .v{flex:1;font-size:24px;font-weight:800;letter-spacing:.18em;font-family:"Baloo 2"}
+.codebox button{flex:none;border:1px solid var(--line2);background:var(--card);border-radius:9px;font-weight:800;padding:8px 14px;min-height:42px;color:var(--ink)}
+.warnbox{background:var(--yellow-soft);border:1px solid var(--yellow);border-radius:11px;padding:11px 14px;font-size:13.5px;margin:14px 0}
+.modal ol{margin:10px 0 0;padding-left:20px;font-size:14px;color:var(--ink2)}
+.modal ol li{margin-bottom:5px}
+.upsteps{margin:6px 0 16px}
+.upsteps div{display:flex;gap:9px;align-items:center;padding:6px 0;font-size:14.5px;font-weight:600;color:var(--ink3)}
+.upsteps div.done{color:var(--ink)}
+.upsteps div .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line2);display:grid;place-items:center;font-size:12px;flex:none}
+.upsteps div.done .dot{background:var(--green);border-color:var(--green);color:#fff}
+#warnList{font-size:13px;color:var(--ink2);margin:0 0 10px;padding-left:18px}
+#toasts{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center;width:max-content;max-width:92vw}
+.toast{background:var(--ink);color:var(--bg);border-radius:999px;padding:10px 20px;font-weight:700;font-size:14px;box-shadow:var(--shadow);animation:tin .25s ease}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1}}
+footer{color:var(--ink3);font-size:12.5px;text-align:center;padding:8px 16px 0}
+footer a{color:var(--ink2)}
+.empty-hint{text-align:center;color:var(--ink3);padding:26px 10px;font-size:14.5px}
+.empty-hint .big{font-size:38px;display:block;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="intro">
+    <h1>🐱 貓咪大戰爭存檔編輯器</h1>
+    <p>輸入遊戲裡的轉移號碼與認證號碼，透過 BCSFE 後端下載存檔，在這裡視覺化改好罐頭、券券、貓咪、寶物與進度，最後按右下角「確認並上傳」，就能拿到一組真的新號碼帶回遊戲。貓咪、型態與關卡資料全部以載入當下後端回傳的當版遊戲資料為準，遊戲更新後會自動跟進。</p>
+    <div class="steps">
+      <div class="step on" id="step1"><b>1</b>連接後端・下載</div>
+      <div class="step" id="step2"><b>2</b>修改存檔</div>
+      <div class="step" id="step3"><b>3</b>確認取得新號碼</div>
+    </div>
+  </div>
+
+  <!-- 後端設定 -->
+  <section class="card" id="backendCard">
+    <h2><span class="ic">🖥️</span>後端連線設定</h2>
+    <p class="sub">下載與上傳存檔需要 BCSFE 後端（GitHub Pages 本身是靜態頁面，無法直接連遊戲伺服器）。把你部署好的後端網址填在這裡，網站會記在這個瀏覽器裡；別人使用時，請用你部署的雲端後端網址，或各自在本機跑後端。</p>
+    <div class="bk-row">
+      <span class="dotst" id="bkDot"></span>
+      <input id="backendUrl" placeholder="https://你的後端.onrender.com 或 http://127.0.0.1:8765" autocomplete="off">
+      <button class="btn btn-ghost btn-small" id="btnBkSave">儲存</button>
+      <button class="btn btn-ghost btn-small" id="btnBkTest">測試連線</button>
+      <button class="btn btn-ghost btn-small" id="btnBkLocal">改用本機後端</button>
+    </div>
+    <div class="hint" style="font-size:12.5px;color:var(--ink3);margin-top:8px" id="bkHint">尚未測試連線。雲端後端免費方案休眠時，第一次連線要等 30–60 秒喚醒，不是壞掉。</div>
+    <div class="err" id="bkErr"></div>
+    <div class="okmsg" id="bkOk"></div>
+  </section>
+
+  <!-- 1. 下載 -->
+  <section class="card" id="connectCard">
+    <h2><span class="ic">📥</span>第一步：下載你的存檔</h2>
+    <p class="sub">在遊戲主畫面 →「設定」→「帳號／機種變更」→「將資料保存到伺服器」，會得到下面兩組號碼。</p>
+    <div class="connect-grid">
+      <div class="field">
+        <label for="transferCode">轉移號碼</label>
+        <input class="code" id="transferCode" inputmode="numeric" autocomplete="off" placeholder="9 碼數字" maxlength="12">
+        <div class="hint">遊戲畫面上方那組數字</div>
+      </div>
+      <div class="field">
+        <label for="confirmCode">認證號碼</label>
+        <input class="code" id="confirmCode" inputmode="numeric" autocomplete="off" placeholder="4 碼" maxlength="4">
+        <div class="hint">4 碼數字</div>
+      </div>
+      <div class="field ver">
+        <label for="gameVer">遊戲版本</label>
+        <select id="gameVer">
+          <option value="tw">🇹🇼 台灣版（tw）</option>
+          <option value="jp">🇯🇵 日本版（jp）</option>
+          <option value="en">🌍 國際版（en）</option>
+          <option value="kr">🇰🇷 韓國版（kr）</option>
+        </select>
+        <div class="hint">日本版送出時會自動轉成 ja；國際版 en 包含 it／es／fr／th／de 語系，存檔格式相同，一樣選 en。</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="btnDownload">⬇️ 接收帳號資料（下載存檔）</button>
+    <div class="err" id="connectErr"></div>
+    <div class="progress" id="dlProgress">
+      <div class="bar"><i id="dlBar"></i></div>
+      <div class="msg" id="dlMsg">連線中…</div>
+    </div>
+    <div class="alt-row">
+      <span class="sep">或使用本機檔案：</span>
+      <button class="btn btn-ghost btn-small" id="btnImport">📂 載入備份 JSON</button>
+      <input type="file" id="fileInput" accept=".json,application/json" hidden>
+      <button class="btn btn-ghost btn-small" id="btnDemo">👀 載入範例存檔（僅預覽介面）</button>
+    </div>
+  </section>
+
+  <!-- 帳號總覽 -->
+  <section class="card" id="accountBar">
+    <h2><span class="ic">👤</span>帳號總覽</h2>
+    <p class="sub" id="acctSub">已載入存檔，可以開始修改了。</p>
+    <div class="acct">
+      <div class="cell"><div class="k">遊戲版本</div><div class="v" id="ovVer" style="font-size:16px">—</div></div>
+      <div class="cell"><div class="k">查詢碼（遮罩）</div><div class="v num" id="ovInquiry" style="font-size:15.5px">—</div></div>
+      <div class="cell"><div class="k">持有貓咪</div><div class="v"><span class="num" id="ovCats">—</span> <small id="ovCatsTotal"></small></div></div>
+      <div class="cell"><div class="k">貓罐頭</div><div class="v num" id="ovFood">—</div></div>
+    </div>
+    <div class="note">上傳時沿用這份存檔本身的遊戲版本號，不會寫死舊版本；貓咪數量、名稱、型態與關卡章節都以這次載入的當版遊戲資料為準。</div>
+  </section>
+
+  <!-- 一鍵快捷 -->
+  <section class="card" id="quickBar">
+    <h2><span class="ic">⚡</span>一鍵快捷</h2>
+    <p class="sub">常用的整批修改，點了之後還是可以再到下面各分頁微調；批次項目會在確認上傳時一併送出。</p>
+    <div class="quick-grid">
+      <button data-quick="resources">💰 資源全滿</button>
+      <button data-quick="tickets">🎟️ 券券補滿</button>
+      <button data-quick="items">🎒 道具全滿</button>
+      <button data-quick="fruits">🍇 貓薄荷全滿</button>
+      <button data-quick="unlock_cats">🐱 全貓解鎖</button>
+      <button data-quick="max_cats">🐱 全貓升滿</button>
+      <button data-quick="clear_story">🏁 主線全通關</button>
+      <button data-quick="max_treasures">👑 寶物全金</button>
+    </div>
+    <div class="note">⚠️ 風險提醒：直接把貓罐頭、稀有券、白金券、傳說券改到很高，比較容易被系統偵測。想低調一點，建議改用白金碎片換白金券，或直接解鎖想要的貓咪與道具。</div>
+  </section>
+
+  <!-- 編輯器 -->
+  <section id="editor">
+    <nav class="tabs" id="tabs">
+      <button data-tab="res" class="on">💰 資源・券券</button>
+      <button data-tab="items">🎒 道具・素材</button>
+      <button data-tab="fruit">🍇 貓薄荷・貓力達</button>
+      <button data-tab="orbs">🔮 本能玉</button>
+      <button data-tab="cats">🐱 貓咪</button>
+      <button data-tab="progress">🏰 進度・寶物</button>
+      <button data-tab="base">🔧 加碼多多・基地</button>
+      <button data-tab="account">🛡️ 帳號・其他</button>
+    </nav>
+
+    <div class="card panel on" data-panel="res">
+      <h3>核心資源</h3>
+      <div class="rows" id="resCore"></div>
+      <h3>轉蛋券</h3>
+      <div class="rows" id="resTickets"></div>
+      <h3>轉蛋種子</h3>
+      <div class="note">種子決定接下來轉蛋會抽到什麼，改了之後抽蛋順序會跟著改變。</div>
+      <div class="rows" id="seedRows"></div>
+    </div>
+
+    <div class="card panel" data-panel="items">
+      <h3>戰鬥道具（每項上限依後端）</h3>
+      <div class="rows" id="battleItems"></div>
+      <div class="note">無限道具：每項道具可以另外設定「無限使用」的持續時間，選「持續分鐘」填分鐘數，或選「無限」不限時間。</div>
+      <h3>貓眼石</h3>
+      <div class="rows" id="catseyes"></div>
+      <h3>城堡素材（奧托開發用）</h3>
+      <div class="rows" id="baseMats"></div>
+    </div>
+
+    <div class="card panel" data-panel="fruit">
+      <h3>貓薄荷（9 種顏色 × 種子／果實）</h3>
+      <div class="rows" id="catfruits"></div>
+      <h3>貓力達（加碼多多探險用）</h3>
+      <div class="rows" id="catamins"></div>
+    </div>
+
+    <div class="card panel" data-panel="orbs">
+      <h3>本能玉（依屬性 × 效果）</h3>
+      <div class="note">本能玉清單來自載入存檔當下的遊戲資料：依對象屬性（紅、飄浮、黑、金屬、天使、異星、殭屍、惡魔、古代等）與效果（善攻、耐打、超傷害、減傷、增傷等）分類；沒有對象屬性的會列在「特殊本能玉」。用下面的篩選快速找玉。</div>
+      <div class="orb-tools">
+        <select id="orbAttr"><option value="all">全部屬性</option></select>
+        <select id="orbEffect"><option value="all">全部效果</option></select>
+        <button class="btn btn-ghost btn-small" id="btnOrbMax">篩選結果全部設 99</button>
+      </div>
+      <div id="orbList"></div>
+    </div>
+
+    <div class="card panel" data-panel="cats">
+      <div class="cat-tools">
+        <input type="search" id="catSearch" placeholder="🔍 搜尋貓咪名稱或編號…">
+        <select id="catFilter"><option value="all">全部</option><option value="owned">已解鎖</option><option value="locked">未解鎖</option></select>
+        <button class="btn btn-ghost btn-small" id="btnLoadNames">載入其餘貓名</button>
+        <button class="btn btn-ghost btn-small" id="btnAllCats">全選解鎖</button>
+        <button class="btn btn-ghost btn-small" id="btnNoCats">全部移除</button>
+      </div>
+      <p class="sub" style="margin-bottom:12px" id="catCountNote">貓咪清單會依載入存檔的當版遊戲資料顯示。</p>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+
+    <div class="card panel" data-panel="progress">
+      <h3>主線進度・寶物（逐關調整）</h3>
+      <p class="sub">每一章的關卡數以當版遊戲資料為準。用滑桿設定已通關關卡數；每一關的寶物格點一下會依序切換：無 → 銅 → 銀 → 金。</p>
+      <div id="storyList"></div>
+      <h3>其他模式進度</h3>
+      <p class="sub">魔界、不死（殭屍襲擊）、舊傳說（傳奇任務）、真傳說、零傳說各自獨立計算，關卡總數以當版遊戲資料為準。</p>
+      <div id="modeList"></div>
+    </div>
+
+    <div class="card panel" data-panel="base">
+      <h3>加碼多多</h3>
+      <div class="rows" id="gamaRows"></div>
+      <div class="note" id="gamaNote">加碼多多等級由經驗值決定，遊戲會依經驗值自動計算等級；隊員人數為目前編制，僅供查看。</div>
+      <h3>奧托・貓咪砲與工程師</h3>
+      <div class="rows" id="ototoRows"></div>
+      <div id="cannonList"></div>
+      <h3>貓咪神社</h3>
+      <div class="rows" id="shrineRows"></div>
+    </div>
+
+    <div class="card panel" data-panel="account">
+      <h3>遊戲時數</h3>
+      <p class="sub">存檔內以幀記錄（30 幀 = 1 秒），這裡換算成時／分／秒讓你直接改。</p>
+      <div class="time-row">
+        <input class="num" id="ptH" type="number" min="0" max="99999"> <span>小時</span>
+        <input class="num" id="ptM" type="number" min="0" max="59"> <span>分</span>
+        <input class="num" id="ptS" type="number" min="0" max="59"> <span>秒</span>
+        <span style="font-size:12.5px;color:var(--ink3)" id="ptFrames"></span>
+      </div>
+      <h3>帳號修復</h3>
+      <div class="tlist">
+        <div class="titem"><div class="meta"><div class="name">解除帳號封鎖</div><div class="desc">上傳前先呼叫後端的解封功能，再上傳存檔</div></div>
+        <label class="switch"><input type="checkbox" id="togUnban"><span class="tr"></span></label></div>
+      </div>
+      <h3>備份</h3>
+      <div class="alt-row" style="margin-top:2px">
+        <button class="btn btn-ghost btn-small" id="btnExport">💾 下載目前編輯的備份 JSON</button>
+        <span class="sep">把目前所有修改存成檔案，下次可以直接載入繼續改（備份模式不能直接上傳到遊戲）。</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="empty-hint" id="emptyHint"><span class="big">🐾</span><span id="emptyHintText">尚未載入當版資料<br>請先在上方設定後端、輸入轉移號碼與認證號碼下載存檔；後端還沒連上或遊戲資料還沒載到之前，這裡不會顯示任何假清單。</span></div>
+
+  <footer>
+    介面參考開源專案 BCSFE-Python（fieryhenry）設計 ·
+    <a href="https://github.com/fieryhenry/BCSFE-Python" target="_blank" rel="noopener">GitHub 原始專案</a><br>
+    下載與上傳都透過你設定的 BCSFE 後端連到遊戲伺服器；沒有連上後端時，本頁只能預覽範例與編輯備份檔，不會產生任何號碼。修改存檔有風險，請先備份，號碼等同帳號密碼，不要交給別人的後端。
+  </footer>
+</div>
+
+<div class="actionbar">
+  <div class="inner">
+    <div class="status" id="barStatus">尚未載入存檔</div>
+    <button class="btn-reset" id="btnReset" disabled>↩️ 還原</button>
+    <button class="btn-confirm" id="btnConfirm" disabled>✅ 確認並上傳</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div id="uploadingView">
+      <h2 id="upTitle">上傳中…</h2>
+      <p class="sub" id="upSub">正在透過後端把修改送出，請稍等。</p>
+      <div class="upsteps" id="upSteps">
+        <div><span class="dot">1</span>送出修改到後端</div>
+        <div><span class="dot">2</span>上傳到遊戲伺服器</div>
+        <div><span class="dot">3</span>取得新的轉移號碼</div>
+      </div>
+      <ul id="warnList"></ul>
+      <div class="err" id="upErr"></div>
+      <button class="btn btn-ghost" id="btnUpClose" style="display:none;width:100%">關閉</button>
+    </div>
+    <div id="resultView" style="display:none">
+      <h2>🎉 完成！這是你的新號碼</h2>
+      <p class="sub">這組號碼是遊戲伺服器剛剛真的發出的。舊的轉移號碼已經失效，請用這組新號碼回遊戲接回帳號。</p>
+      <div class="codebox"><span class="k">轉移號碼</span><span class="v num" id="newTransfer">—</span><button data-copy="newTransfer">複製</button></div>
+      <div class="codebox"><span class="k">認證號碼</span><span class="v num" id="newConfirm">—</span><button data-copy="newConfirm">複製</button></div>
+      <div class="codebox"><span class="k">版本</span><span class="v num" id="newVer" style="font-size:17px;letter-spacing:.03em">—</span><button data-copy="newVer">複製</button></div>
+      <div class="warnbox">⚠️ 請先把這組號碼抄下來或截圖保存，遺失將無法取回修改後的帳號。</div>
+      <p style="font-weight:800;margin:14px 0 0">回遊戲接回帳號的步驟：</p>
+      <ol>
+        <li>回到遊戲，點「關閉遊戲」→「取消資料轉移」</li>
+        <li>進「設定」→「帳號／機種變更」→「繼續資料轉移」→「將資料轉移到新裝置」</li>
+        <li>輸入上面新的轉移號碼與認證號碼，點「繼續轉移」</li>
+        <li>完成！修改內容就會出現在遊戲裡</li>
+      </ol>
+      <button class="btn btn-primary" id="btnDone" style="margin-top:18px">完成，關閉</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+"use strict";
+/* ================= helpers ================= */
+function $(s, r){ return (r||document).querySelector(s); }
+function $$(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
+function clamp(v, min, max){ v = parseInt(v,10); if(isNaN(v)) v = min; return Math.max(min, Math.min(max, v)); }
+function fmt(n){ return Number(n||0).toLocaleString("en-US"); }
+function toast(msg){
+  var t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  $("#toasts").appendChild(t);
+  setTimeout(function(){ t.style.opacity = "0"; t.style.transition = "opacity .3s"; setTimeout(function(){ t.remove(); }, 320); }, 2300);
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+function countDiff(a, b, path){
+  if(a === b) return 0;
+  if(a === null || b === null || typeof a !== "object" || typeof b !== "object") return 1;
+  var n = 0, keys = {}, k;
+  for(k in a) keys[k] = 1; for(k in b) keys[k] = 1;
+  for(k in keys) n += countDiff(a[k], b[k]);
+  return n;
+}
+/* 後端網址：管理員可把部署好的雲端後端寫死在這裡，別人開連結就免設定 */
+var DEFAULT_BACKEND_URL = "";
+function backendBase(){
+  var v = "";
+  try{ v = localStorage.getItem("bcsfe_backend_url") || ""; }catch(e){}
+  v = (v || $("#backendUrl").value || DEFAULT_BACKEND_URL || "").trim();
+  return v.replace(/\/+$/, "");
+}
+function api(path, opts){
+  var base = backendBase();
+  if(!base) return Promise.reject(new Error("尚未設定後端網址，請先在「後端連線設定」填入並測試連線。"));
+  return fetch(base + path, opts).then(function(r){
+    return r.json().catch(function(){ return { ok:false, error:"bad_response", hint:"後端回應不是 JSON（HTTP " + r.status + "）" }; })
+      .then(function(j){ j._http = r.status; return j; });
+  }).catch(function(e){
+    if(e && e.message && e.message.indexOf("尚未設定") === 0) throw e;
+    throw new Error("連不到後端：請確認後端有啟動、網址正確；雲端免費方案休眠時要等 30–60 秒喚醒後再試。");
+  });
+}
+var ERR_TEXT = {
+  invalid_codes: "號碼錯誤或已失效，請重新在遊戲內產生一組新號碼，並確認版本沒有選錯（台灣版與日本版不要搞混）。",
+  network_error: "後端連不到遊戲伺服器，請檢查網路後重試。",
+  download_failed: "下載時發生例外，請重試一次。",
+  upload_failed: "上傳失敗，請重試一次；仍失敗請改用原版 BCSFE 再試。",
+  session_not_found: "連線階段已失效（後端可能重啟過），請重新下載存檔。",
+  missing_codes: "請輸入轉移號碼與認證號碼。",
+  bad_cc: "版本代碼不正確。",
+  unban_failed: "解封失敗，請重試。"
+};
+function errText(j){
+  if(!j) return "未知錯誤";
+  var t = ERR_TEXT[j.error] || ("錯誤：" + (j.error || "未知"));
+  if(j.hint) t += "\n" + j.hint;
+  return t;
+}
+
+/* ================= 定義（上限照 BCSFE 預設；後端有回 limits 時以 limits 為準） ================= */
+var MAXV = { catfood:45000, xp:99999999, np:9999, leadership:9999, normal_tickets:2999, rare_tickets:299,
+  platinum_tickets:9, legend_tickets:4, platinum_shards:99, catfruit:998, catseyes:9999, catamins:9999,
+  battle_items:9999, base_materials:9999, talent_orbs:9999, cat_level:50, cat_plus:90 };
+var SCALARS = [
+  ["catfood","🥫","貓罐頭","買道具與轉蛋的主要貨幣",1],
+  ["xp","✨","XP 經驗值","升級貓咪用",0],
+  ["np","🧬","NP 本能點數","開啟貓咪本能用",0],
+  ["leadership","🚩","統率力旗幟","回復統率力",0]
+];
+var TICKETS = [
+  ["normal_tickets","🎫","貓咪券（普通券）","普通轉蛋用",0],
+  ["rare_tickets","🎟️","稀有券","稀有轉蛋用",1],
+  ["platinum_tickets","💠","白金券","白金轉蛋（必中超激稀有）",1],
+  ["legend_tickets","🌟","傳說券","傳說轉蛋用",1],
+  ["platinum_shards","🔷","白金碎片","10 個換 1 張白金券，較不易被偵測，建議用這個代替直接改白金券",0]
+];
+var SEEDS = [
+  ["rare_gatya_seed","🎲","稀有轉蛋種子","目前稀有轉蛋的種子位置"],
+  ["normal_gatya_seed","🎲","普通轉蛋種子","目前普通轉蛋的種子位置"],
+  ["event_gatya_seed","🎲","活動轉蛋種子","目前活動轉蛋的種子位置"]
+];
+var BATTLE_ITEMS = [["⏩","加速"],["📡","寶物雷達"],["💰","金錢貓"],["🖥️","貓電腦"],["💼","工作貓"],["🎯","狙擊貓"]];
+var CATSEYES = [["👁️","貓眼石・普通"],["👁️","貓眼石・EX"],["👁️","貓眼石・稀有"],["👁️","貓眼石・超激稀有"],["👁️","貓眼石・傳說稀有"],["🌑","暗黑貓眼石"]];
+var BASE_MATS = [["🧱","磚塊"],["🪶","羽毛"],["⬛","煤炭"],["⚙️","齒輪"],["🥇","黃金"],["☄️","隕石"],["🦴","獸骨"],["🐚","菊石"],["🌌","宇宙石"]];
+/* 貓薄荷：9 種顏色，順序照後端陣列（紅、綠、藍、黃、紫、金、惡魔、彩虹、古代），每種 種子→果實 */
+var FRUIT_COLORS = [["🔴","紅色"],["🟢","綠色"],["🔵","藍色"],["🟡","黃色"],["🟣","紫色"],["🌕","金色"],["😈","惡魔"],["🌈","彩虹"],["🏺","古代"]];
+var FORM_NAMES = ["第一型態","第二型態","真型態","第四型態"];
+var TRE_NAMES = ["無","銅","銀","金"];
+var MODE_NAMES = { aku:"魔界篇", outbreaks:"不死篇（殭屍襲擊）", legend_quest:"舊傳說（傳奇任務）", uncanny:"真傳說", zero_legends:"零傳說" };
+
+/* ================= state ================= */
+var M = null;          /* 目前模型 */
+var S0 = null;         /* 載入時快照（JSON 字串） */
+var bulkOps = {};      /* 一鍵批次（上傳時送出） */
+var sessionId = null;
+var mode = "none";     /* backend | demo | backup */
+var meta = { transfer:"", ver:"tw", inquiry:"", gvStr:"", cc:"" };
+var loaded = false;
+
+function emptyModel(){
+  return {
+    scalars:{ catfood:0, xp:0, np:0, leadership:0, normal_tickets:0, rare_tickets:0, platinum_tickets:0, legend_tickets:0, platinum_shards:0 },
+    seeds:{ rare_gatya_seed:0, normal_gatya_seed:0, event_gatya_seed:0 },
+    battleItems: BATTLE_ITEMS.map(function(){ return { amount:0, endlessMode:"off", endlessMins:180 }; }),
+    catseyes:[0,0,0,0,0,0],
+    baseMaterials:[0,0,0,0,0,0,0,0,0],
+    catfruit:(function(){ var a=[]; for(var i=0;i<18;i++) a.push(0); return a; })(),
+    catamins:[0,0,0],
+    orbs:{}, orbInfos:[],
+    cats:[], story:[], modes:[],
+    gamaXp:0, gamaHelpers:null, engineers:0, cannons:[], shrineXp:0,
+    playFrames:0, unban:false
+  };
+}
+function dirtyCount(){
+  if(!S0 || !M) return 0;
+  var n = countDiff(JSON.parse(S0), M);
+  Object.keys(bulkOps).forEach(function(k){ if(bulkOps[k]) n++; });
+  return n;
+}
+
+/* ================= renderers ================= */
+function stepperHTML(path, val, max){
+  return '<div class="stepper"><button data-step="-1" data-path="'+path+'" aria-label="減少">−</button>'+
+    '<input class="num" data-input="'+path+'" type="number" inputmode="numeric" min="0" max="'+max+'" value="'+val+'">'+
+    '<button data-step="1" data-path="'+path+'" aria-label="增加">+</button></div>'+
+    '<button class="maxbtn" data-maxbtn="'+path+'" data-maxv="'+max+'">MAX</button>';
+}
+function rowHTML(emoji, name, desc, path, val, max, risk){
+  return '<div class="row-item"><div class="emoji">'+emoji+'</div>'+
+    '<div class="meta"><div class="name">'+esc(name)+'</div>'+(desc?'<div class="desc">'+esc(desc)+'</div>':'')+(risk?'<div class="risk">⚠️ 直接改高較容易被偵測</div>':'')+'</div>'+
+    stepperHTML(path, val, max)+'</div>';
+}
+function getPath(p){ return p.split(".").reduce(function(o,k){ return o[k]; }, M); }
+function setPath(p, v){
+  var parts = p.split("."), o = M;
+  for(var i=0;i<parts.length-1;i++) o = o[parts[i]];
+  o[parts[parts.length-1]] = v;
+}
+function maxFor(p){
+  var key = p.split(".").pop();
+  if(p.indexOf("scalars.") === 0) return MAXV[key] || 99999999;
+  if(p.indexOf("catfruit") === 0) return MAXV.catfruit;
+  if(p.indexOf("catseyes") === 0) return MAXV.catseyes;
+  if(p.indexOf("catamins") === 0) return MAXV.catamins;
+  if(p.indexOf("baseMaterials") === 0) return MAXV.base_materials;
+  if(p.indexOf("battleItems") === 0) return MAXV.battle_items;
+  if(p.indexOf("orbs.") === 0) return MAXV.talent_orbs;
+  return 999999999;
+}
+function renderScalars(){
+  $("#resCore").innerHTML = SCALARS.map(function(f){ return rowHTML(f[1], f[2], f[3], "scalars."+f[0], M.scalars[f[0]]||0, MAXV[f[0]], !!f[4]); }).join("");
+  $("#resTickets").innerHTML = TICKETS.map(function(f){ return rowHTML(f[1], f[2], f[3], "scalars."+f[0], M.scalars[f[0]]||0, MAXV[f[0]], !!f[4]); }).join("");
+  $("#seedRows").innerHTML = SEEDS.map(function(f){ return rowHTML(f[1], f[2], f[3], "seeds."+f[0], M.seeds[f[0]]||0, 2147483647, false); }).join("");
+}
+function renderItems(){
+  $("#battleItems").innerHTML = M.battleItems.map(function(it, i){
+    var sel = '<div class="endless"><span>無限道具：</span><select data-endless="'+i+'">'+
+      '<option value="off"'+(it.endlessMode==="off"?" selected":"")+'>不啟用</option>'+
+      '<option value="mins"'+(it.endlessMode==="mins"?" selected":"")+'>持續分鐘</option>'+
+      '<option value="inf"'+(it.endlessMode==="inf"?" selected":"")+'>無限</option></select>'+
+      (it.endlessMode==="mins" ? '<input class="num" type="number" min="1" max="100000" data-endlessmins="'+i+'" value="'+it.endlessMins+'"><span>分鐘</span>' : '')+
+      '</div>';
+    return '<div class="row-item"><div class="emoji">'+BATTLE_ITEMS[i][0]+'</div>'+
+      '<div class="meta"><div class="name">'+BATTLE_ITEMS[i][1]+'</div><div class="desc">戰鬥道具</div></div>'+
+      stepperHTML("battleItems."+i+".amount", it.amount, MAXV.battle_items)+sel+'</div>';
+  }).join("");
+  $("#catseyes").innerHTML = M.catseyes.map(function(v, i){ return rowHTML(CATSEYES[i][0], CATSEYES[i][1], "", "catseyes."+i, v, MAXV.catseyes, false); }).join("");
+  $("#baseMats").innerHTML = M.baseMaterials.map(function(v, i){ return rowHTML(BASE_MATS[i][0], BASE_MATS[i][1], "城堡素材", "baseMaterials."+i, v, MAXV.base_materials, false); }).join("");
+}
+function renderFruit(){
+  var html = "";
+  FRUIT_COLORS.forEach(function(c, ci){
+    html += rowHTML(c[0], c[1]+"貓薄荷種子", "貓薄荷種子", "catfruit."+(ci*2), M.catfruit[ci*2]||0, MAXV.catfruit, false);
+    html += rowHTML(c[0], c[1]+"貓薄荷果實", "貓薄荷果實", "catfruit."+(ci*2+1), M.catfruit[ci*2+1]||0, MAXV.catfruit, false);
+  });
+  $("#catfruits").innerHTML = html;
+  var names = ["A","B","C","D","E"];
+  $("#catamins").innerHTML = M.catamins.map(function(v, i){ return rowHTML("🧪", "貓力達 "+(names[i]||("第 "+(i+1)+" 種")), "加碼多多探險加速", "catamins."+i, v, MAXV.catamins, false); }).join("");
+}
+function orbLabel(o){
+  var eff = o.effect || "";
+  eff = eff.replace(/%@/g, "").replace(/:/g, " ").trim();
+  return { attr: o.target || "特殊", text: (o.rank ? o.rank + "級 " : "") + (o.target ? "對" + o.target + " " : "") + eff };
+}
+function renderOrbs(){
+  var attrSel = $("#orbAttr"), effSel = $("#orbEffect");
+  var attrs = {}, effs = {};
+  M.orbInfos.forEach(function(o){ var l = orbLabel(o); attrs[l.attr] = 1; if(l.text) effs[o.effect||""] = 1; });
+  var curA = attrSel.value, curE = effSel.value;
+  attrSel.innerHTML = '<option value="all">全部屬性</option>' + Object.keys(attrs).map(function(a){ return '<option value="'+esc(a)+'">'+esc(a)+'</option>'; }).join("");
+  effSel.innerHTML = '<option value="all">全部效果</option>' + Object.keys(effs).map(function(a){ var lbl = a.replace(/%@/g,"").replace(/:/g," ").trim()||a; return '<option value="'+esc(a)+'">'+esc(lbl)+'</option>'; }).join("");
+  if(curA && attrs[curA]) attrSel.value = curA;
+  if(curE && effs[curE] !== undefined) effSel.value = curE;
+  var groups = {}, order = [];
+  M.orbInfos.forEach(function(o){
+    var l = orbLabel(o);
+    if(attrSel.value !== "all" && l.attr !== attrSel.value) return;
+    if(effSel.value !== "all" && (o.effect||"") !== effSel.value) return;
+    if(!groups[l.attr]){ groups[l.attr] = []; order.push(l.attr); }
+    groups[l.attr].push(o);
+  });
+  if(!M.orbInfos.length){
+    $("#orbList").innerHTML = '<p class="sub">尚未載入當版資料：這份存檔沒有回傳本能玉清單。</p>'; return;
+  }
+  $("#orbList").innerHTML = order.map(function(g){
+    return '<div class="orb-group">'+(g==="特殊" ? "✨ 特殊本能玉" : "對"+esc(g)+"屬性")+'</div><div class="rows">'+
+      groups[g].map(function(o){
+        var l = orbLabel(o);
+        return rowHTML("🔮", l.text || ("本能玉 #"+o.id), "本能玉編號 "+o.id, "orbs."+o.id, M.orbs[o.id]||0, MAXV.talent_orbs, false);
+      }).join("")+'</div>';
+  }).join("") || '<p class="sub">沒有符合篩選的本能玉。</p>';
+}
+function renderCats(){
+  var q = ($("#catSearch").value || "").trim().toLowerCase();
+  var f = $("#catFilter").value;
+  var owned = M.cats.filter(function(c){ return c.unlocked; }).length;
+  $("#catCountNote").textContent = "共 " + M.cats.length + " 隻貓（依載入存檔的當版遊戲資料），已解鎖 " + owned + " 隻。" + (mode==="demo" ? "目前是範例存檔，名單為範例。" : "名稱與型態以目前版本（" + (meta.ver||"").toUpperCase() + "）的遊戲資料為準。");
+  $("#catGrid").innerHTML = M.cats.map(function(c, i){
+    if(f === "owned" && !c.unlocked) return "";
+    if(f === "locked" && c.unlocked) return "";
+    if(q && ((c.name||"").toLowerCase().indexOf(q) === -1 && String(c.id).indexOf(q) === -1)) return "";
+    var formOpts = function(cur){ return FORM_NAMES.map(function(fn, fi){ return '<option value="'+fi+'"'+(cur===fi?" selected":"")+'>'+fn+'</option>'; }).join(""); };
+    return '<div class="cat'+(c.unlocked?" owned":"")+'">'+
+      '<button class="own" data-own="'+i+'" aria-label="解鎖切換">✓</button>'+
+      '<div class="cid">編號 '+c.id+'</div><div class="cname">'+esc(c.name || ("貓咪 #"+c.id))+'</div>'+
+      (c.rarity ? '<span class="rar">'+esc(c.rarity)+'</span>' : '')+
+      '<div class="lvrow"><label>Lv</label><input class="num" type="number" min="1" max="'+MAXV.cat_level+'" data-catlv="'+i+'" value="'+c.level+'">'+
+      '<label>+</label><input class="num" type="number" min="0" max="'+MAXV.cat_plus+'" data-catplus="'+i+'" value="'+c.plus+'"></div>'+
+      '<div class="frow"><div><label>目前型態</label><select data-catform="'+i+'">'+formOpts(c.current_form)+'</select></div>'+
+      '<div><label>已解鎖型態</label><select data-catunlockform="'+i+'">'+formOpts(c.unlocked_forms)+'</select></div></div></div>';
+  }).join("") || '<p class="sub">找不到符合的貓咪。</p>';
+  updateOverview();
+}
+function renderStory(){
+  $("#storyList").innerHTML = M.story.map(function(ch, ci){
+    var cleared = ch.stages.filter(function(s){ return s.clear > 0; }).length;
+    return '<div class="chap"><div class="chead"><div class="cname">🏯 '+esc(ch.name)+'</div>'+
+      '<span class="cmeta">共 '+ch.stages.length+' 關・已通關 '+cleared+' 關</span>'+
+      '<button class="btn btn-ghost btn-small" data-chapgold="'+ci+'">整章金寶</button>'+
+      '<button class="btn btn-ghost btn-small" data-chapclear="'+ci+'">寶物清除</button></div>'+
+      '<div class="chead" style="margin-top:9px"><span class="cmeta">已通關關卡數</span>'+
+      '<input type="range" min="0" max="'+ch.stages.length+'" value="'+cleared+'" data-chaprange="'+ci+'">'+
+      '<span class="cmeta num" id="chapRangeVal'+ci+'">'+cleared+' / '+ch.stages.length+'</span></div>'+
+      '<div class="stage-grid">'+ch.stages.map(function(s, si){
+        return '<button class="stage-chip'+(s.clear>0?" cleared":"")+'" data-stage="'+ci+":"+si+'" data-t="'+s.treasure+'" title="第 '+(si+1)+' 關・寶物：'+TRE_NAMES[s.treasure]+'">'+(si+1)+'<span class="tnum">'+TRE_NAMES[s.treasure]+'</span></button>';
+      }).join("")+'</div></div>';
+  }).join("") || '<p class="sub">尚未載入當版資料：這份存檔沒有回傳主線章節資料。</p>';
+  $("#modeList").innerHTML = M.modes.map(function(md, mi){
+    if(!md.available) return '<div class="mode-row"><div class="mname">'+esc(md.name)+'</div><span class="mmeta">尚未載入當版資料（後端未回傳此模式）</span></div>';
+    return '<div class="mode-row"><div class="mname">'+esc(md.name)+'</div>'+
+      '<span class="mmeta">共 '+md.total+' 關</span>'+
+      '<input type="range" min="0" max="'+md.total+'" value="'+md.cleared+'" data-moderange="'+mi+'">'+
+      '<span class="mmeta num" id="modeVal'+mi+'">已通關 '+md.cleared+' 關</span></div>';
+  }).join("") || '<p class="sub">尚未載入當版資料。</p>';
+}
+function renderBase(){
+  $("#gamaRows").innerHTML =
+    rowHTML("🧭","加碼多多經驗值","探險隊經驗（等級由遊戲依經驗值計算）","gamaXp", M.gamaXp, 999999999, false) +
+    '<div class="row-item"><div class="emoji">🧑‍🤝‍🧑</div><div class="meta"><div class="name">加碼多多隊員</div><div class="desc">'+(M.gamaHelpers===null ? "後端未回傳隊員資料" : "目前隊員 "+M.gamaHelpers+" 位（僅供查看）")+'</div></div></div>';
+  $("#ototoRows").innerHTML = rowHTML("👷","奧托工程師人數","開發人力","engineers", M.engineers, 99, false);
+  $("#cannonList").innerHTML = M.cannons.length ? '<div class="rows">'+M.cannons.map(function(cn, ci){
+    return '<div class="row-item"><div class="emoji">💣</div><div class="meta"><div class="name">貓咪砲 #'+cn.id+'</div><div class="desc">開發度與各部件等級（以遊戲資料為準）</div></div>'+
+      '<div class="stepper"><span style="font-size:12px;color:var(--ink3);font-weight:700">開發</span><input class="num" type="number" min="0" max="30" data-cannondev="'+ci+'" value="'+cn.dev+'"></div>'+
+      cn.levels.map(function(lv, li){ return '<div class="stepper"><span style="font-size:12px;color:var(--ink3);font-weight:700">部件 '+(li+1)+'</span><input class="num" type="number" min="0" max="30" data-cannonlv="'+ci+":"+li+'" value="'+lv+'"></div>'; }).join("")+'</div>';
+  }).join("")+'</div>' : '<p class="sub">這份存檔沒有回傳貓咪砲資料。</p>';
+  $("#shrineRows").innerHTML = rowHTML("⛩️","貓咪神社供奉 XP","神社累積的供奉經驗","shrineXp", M.shrineXp, 999999999, false);
+}
+function renderPlayTime(){
+  var sec = Math.floor((M.playFrames||0) / 30);
+  $("#ptH").value = Math.floor(sec/3600);
+  $("#ptM").value = Math.floor(sec%3600/60);
+  $("#ptS").value = sec%60;
+  $("#ptFrames").textContent = "（存檔內記錄：" + fmt(M.playFrames||0) + " 幀）";
+}
+function renderAll(){
+  renderScalars(); renderItems(); renderFruit(); renderOrbs(); renderCats(); renderStory(); renderBase(); renderPlayTime();
+  $("#togUnban").checked = !!M.unban;
+  updateOverview(); updateBar();
+}
+function updateOverview(){
+  if(!M) return;
+  $("#ovVer").textContent = meta.gvStr ? (meta.gvStr + "（" + (meta.cc||meta.ver||"").toUpperCase() + "）") : "—";
+  $("#ovInquiry").textContent = meta.inquiry || "—";
+  var owned = M.cats.filter(function(c){ return c.unlocked; }).length;
+  $("#ovCats").textContent = M.cats.length ? owned : "—";
+  $("#ovCatsTotal").textContent = M.cats.length ? ("/ " + M.cats.length + " 隻") : "";
+  $("#ovFood").textContent = fmt(M.scalars.catfood||0);
+}
+function updateBar(){
+  var n = dirtyCount();
+  $("#barStatus").innerHTML = !loaded ? "尚未載入存檔" :
+    (n === 0 ? "已載入存檔，尚未修改" : "已修改 <b>" + n + "</b> 項<span class='chipdot'>未上傳</span>");
+  $("#btnConfirm").disabled = !loaded || n === 0;
+  $("#btnConfirm").textContent = mode === "backend" ? "✅ 確認並上傳" : "✅ 確認（預覽模式）";
+  $("#btnReset").disabled = !loaded || n === 0;
+  $("#step2").classList.toggle("on", loaded && n > 0);
+  $("#step2").classList.toggle("done", loaded && n === 0);
+  updateOverview();
+}
+</script>
+
+<script>
+"use strict";
+/* ================= 載入流程 ================= */
+function finishLoad(label){
+  S0 = JSON.stringify(M);
+  bulkOps = {};
+  loaded = true;
+  $("#accountBar").classList.add("show");
+  $("#quickBar").classList.add("show");
+  $("#editor").classList.add("show");
+  $("#emptyHint").style.display = "none";
+  $("#acctSub").textContent = label;
+  $("#step1").classList.add("done"); $("#step1").classList.remove("on");
+  $("#step2").classList.add("on");
+  renderAll();
+  toast("✅ 存檔載入完成");
+  $("#accountBar").scrollIntoView({ behavior:"smooth", block:"start" });
+}
+function modelFromBackend(save, summary){
+  var m = emptyModel();
+  var v = save.values || {};
+  Object.keys(m.scalars).forEach(function(k){ if(typeof v[k] === "number") m.scalars[k] = v[k]; });
+  SEEDS.forEach(function(f){ if(typeof v[f[0]] === "number") m.seeds[f[0]] = v[f[0]]; });
+  if(Array.isArray(v.catfruit)) v.catfruit.slice(0,18).forEach(function(x,i){ m.catfruit[i] = x; });
+  if(Array.isArray(v.catseyes)) v.catseyes.slice(0,6).forEach(function(x,i){ m.catseyes[i] = x; });
+  if(Array.isArray(v.catamins) && v.catamins.length) m.catamins = v.catamins.slice(0,8);
+  if(Array.isArray(v.battle_items)) v.battle_items.slice(0,6).forEach(function(it, i){
+    m.battleItems[i].amount = it.amount || 0;
+    var en = it.endless || {};
+    if(en.active){ m.battleItems[i].endlessMode = (en.end === null || !isFinite(en.end)) ? "inf" : "mins"; m.battleItems[i].endlessMins = 180; }
+  });
+  if(Array.isArray(v.base_materials)) v.base_materials.slice(0,9).forEach(function(x,i){ m.baseMaterials[i] = x; });
+  if(Array.isArray(v.talent_orbs)) v.talent_orbs.forEach(function(o){ m.orbs[o.id] = o.value; });
+  if(Array.isArray(save.orb_infos)) m.orbInfos = save.orb_infos;
+  if(typeof v.gamatoto_xp === "number") m.gamaXp = v.gamatoto_xp;
+  if(typeof v.gamatoto_helpers === "number") m.gamaHelpers = v.gamatoto_helpers;
+  if(typeof v.ototo_engineers === "number") m.engineers = v.ototo_engineers;
+  if(typeof v.cat_shrine_xp === "number") m.shrineXp = v.cat_shrine_xp;
+  if(typeof v.play_time_frames === "number") m.playFrames = v.play_time_frames;
+  if(v.ototo_cannons && v.ototo_cannons.cannons){
+    Object.keys(v.ototo_cannons.cannons).forEach(function(id){
+      var arr = v.ototo_cannons.cannons[id] || [];
+      m.cannons.push({ id:id, dev: arr[0]||0, levels: arr.slice(1) });
+    });
+  }
+  m.cats = (save.cats || []).map(function(c){
+    return { id:c.id, name:c.name || null, rarity: c.rarity || null, unlocked: !!c.unlocked,
+      level: c.level || 1, plus: c.plus || 0, current_form: c.current_form || 0,
+      unlocked_forms: c.unlocked_forms || 0, fourth_form: c.fourth_form || 0 };
+  });
+  m.story = (save.story || []).map(function(ch){
+    return { name: ch.name || "主線章節", stages: (ch.stages || []).map(function(s){
+      return { clear: s.clear_times || 0, treasure: s.treasure || 0 }; }) };
+  });
+  m.modes = (save.map_modes || []).map(function(md){
+    return { key: md.key, name: MODE_NAMES[md.key] || md.key, total: md.total || 0, cleared: md.cleared || 0, available: !!md.available };
+  });
+  if(save.limits){
+    var L = save.limits;
+    ["catfood","xp","np","leadership","normal_tickets","rare_tickets","platinum_tickets","legend_tickets"].forEach(function(k){ if(L[k]) MAXV[k] = L[k]; });
+    if(L.battle_items) MAXV.battle_items = L.battle_items;
+    if(L.base_materials) MAXV.base_materials = L.base_materials;
+    if(L.talent_orbs) MAXV.talent_orbs = L.talent_orbs;
+    if(L.catfruit_new) MAXV.catfruit = L.catfruit_new;
+    if(L.catseyes) MAXV.catseyes = L.catseyes;
+    if(L.catamins) MAXV.catamins = L.catamins;
+    if(L.cat_level_max) MAXV.cat_level = L.cat_level_max;
+    if(L.cat_plus_max) MAXV.cat_plus = L.cat_plus_max;
+  }
+  meta.inquiry = (summary && summary.inquiry_code_masked) || "";
+  meta.gvStr = (summary && summary.game_version_str) || "";
+  meta.cc = (summary && summary.cc) || meta.ver;
+  return m;
+}
+function doDownload(){
+  var err = $("#connectErr"); err.classList.remove("show");
+  if(!backendBase()){ err.textContent = "⚠️ 尚未設定後端網址：請先在上方「後端連線設定」填入後端網址並測試連線。GitHub Pages 本身無法直接連遊戲伺服器。"; err.classList.add("show"); $("#backendCard").scrollIntoView({behavior:"smooth"}); return; }
+  var tc = $("#transferCode").value.replace(/\D/g,"");
+  var cc = $("#confirmCode").value.replace(/\D/g,"");
+  if(tc.length < 8){ err.textContent = "⚠️ 轉移號碼不完整：請輸入遊戲給的完整轉移號碼。"; err.classList.add("show"); return; }
+  if(cc.length !== 4){ err.textContent = "⚠️ 認證號碼要是 4 碼數字，請再檢查一次。"; err.classList.add("show"); return; }
+  meta.transfer = tc; meta.ver = $("#gameVer").value;
+  var ccSend = meta.ver === "jp" ? "ja" : meta.ver;   /* 日本版傳給伺服器時轉成 ja */
+  var btn = $("#btnDownload"); btn.disabled = true; btn.textContent = "下載中…（雲端後端休眠時要等約 1 分鐘）";
+  var prog = $("#dlProgress"); prog.classList.add("show");
+  $("#dlMsg").textContent = "透過後端連線到遊戲伺服器下載存檔…";
+  $("#dlBar").style.width = "45%";
+  api("/api/download", { method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ transfer_code: tc, confirmation_code: cc, cc: ccSend }) })
+  .then(function(j){
+    if(!j.ok) throw new Error(errText(j));
+    sessionId = j.session_id;
+    $("#dlMsg").textContent = "下載完成，正在載入當版遊戲資料（貓咪、型態、關卡）…";
+    $("#dlBar").style.width = "80%";
+    return api("/api/save/" + sessionId + "?names=1");
+  })
+  .then(function(save){
+    if(!save.ok) throw new Error(errText(save));
+    mode = "backend";
+    M = modelFromBackend(save, save.summary);
+    $("#dlBar").style.width = "100%";
+    btn.disabled = false; btn.textContent = "⬇️ 重新下載存檔";
+    setTimeout(function(){ prog.classList.remove("show"); }, 500);
+    finishLoad("轉移號碼 " + tc + "（" + meta.ver.toUpperCase() + " 版）・遊戲版本 " + (meta.gvStr || "—") + "・查詢碼 " + (meta.inquiry || "—"));
+  })
+  .catch(function(e){
+    btn.disabled = false; btn.textContent = "⬇️ 接收帳號資料（下載存檔）";
+    prog.classList.remove("show");
+    err.textContent = "⚠️ " + e.message; err.classList.add("show");
+  });
+}
+/* 範例存檔：只預覽介面，資料是範例、不是任何版本的真實遊戲資料 */
+function loadDemo(){
+  var m = emptyModel();
+  m.scalars = { catfood:1250, xp:8500000, np:320, leadership:12, normal_tickets:45, rare_tickets:8, platinum_tickets:1, legend_tickets:0, platinum_shards:30 };
+  m.seeds = { rare_gatya_seed:123456789, normal_gatya_seed:98765432, event_gatya_seed:55555555 };
+  m.catfruit = m.catfruit.map(function(_, i){ return (i*7)%40; });
+  m.catamins = [42,35,21];
+  m.catseyes = [210,96,74,38,9,4];
+  m.baseMaterials = [180,150,132,118,64,47,39,26,8];
+  m.battleItems.forEach(function(it, i){ it.amount = [120,85,64,52,71,43][i]; });
+  var demoCats = [["貓咪","基本"],["坦克貓","基本"],["戰鬥貓","基本"],["瓦爾基麗貓","EX"],["巴哈姆特貓","EX"],["搖滾貓","稀有"],["壽司貓","稀有"],["織田信長","超激稀有"],["黑無垢","超激稀有"],["宮本武藏","傳說稀有"]];
+  m.cats = demoCats.map(function(c, i){ return { id:i, name:c[0], rarity:c[1], unlocked: i<7, level: 20+i*3, plus: i*4, current_form: i%3, unlocked_forms: Math.min(3, i%4), fourth_form: 0 }; });
+  var attrs = ["紅色","飄浮","黑色","金屬","天使","異星","殭屍","惡魔","古代"];
+  var effs = ["善攻","耐打","超傷害","減傷","增傷"];
+  var oid = 0;
+  attrs.forEach(function(a){ effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"A", target:a, effect: e }); m.orbs[oid] = oid % 5; oid++; }); });
+  effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"S", target:null, effect: e }); oid++; });
+  var chapNames = ["世界篇 第1章","世界篇 第2章","世界篇 第3章","未來篇 第1章","未來篇 第2章","未來篇 第3章","宇宙篇 第1章","宇宙篇 第2章","宇宙篇 第3章"];
+  m.story = chapNames.map(function(n, ci){ var st = []; for(var i=0;i<48;i++) st.push({ clear: ci<2?1:0, treasure: ci<2 ? (i%4) : 0 }); return { name:n, stages: st }; });
+  m.modes = [ ["aku",46,12],["outbreaks",144,60],["legend_quest",49,20],["uncanny",49,8],["zero_legends",12,3] ].map(function(x){ return { key:x[0], name: MODE_NAMES[x[0]], total:x[1], cleared:x[2], available:true }; });
+  m.gamaXp = 450000; m.gamaHelpers = 14; m.engineers = 9; m.shrineXp = 12000; m.playFrames = 386*3600*30;
+  mode = "demo"; sessionId = null;
+  meta.inquiry = "範例（非真實帳號）"; meta.gvStr = "範例資料"; meta.cc = "tw";
+  M = m;
+  finishLoad("範例存檔（僅預覽介面，不能上傳到遊戲）");
+}
+
+/* ================= 上傳 ================= */
+function buildPatch(){
+  var a = JSON.parse(S0), patch = {}, catsPayload = [], bulk = {};
+  Object.keys(bulkOps).forEach(function(k){ if(bulkOps[k]) bulk[k] = true; });
+  var scalarsChanged = countDiff(a.scalars, M.scalars) > 0;
+  if(scalarsChanged) Object.keys(M.scalars).forEach(function(k){ patch[k] = M.scalars[k]; });
+  if(countDiff(a.seeds, M.seeds) > 0) Object.keys(M.seeds).forEach(function(k){ patch[k] = M.seeds[k]; });
+  ["catfruit","catseyes","catamins"].forEach(function(k){ if(countDiff(a[k], M[k]) > 0) patch[k] = M[k]; });
+  if(countDiff(a.battleItems, M.battleItems) > 0) patch.battle_items = M.battleItems.map(function(it){
+    return { amount: it.amount, endless: it.endlessMode === "off" ? { mode:"off" } : it.endlessMode === "inf" ? { mode:"inf" } : { mode:"mins", minutes: it.endlessMins } };
+  });
+  if(countDiff(a.baseMaterials, M.baseMaterials) > 0) patch.base_materials = M.baseMaterials;
+  var orbChanges = [];
+  Object.keys(M.orbs).forEach(function(id){ if(a.orbs[id] !== M.orbs[id]) orbChanges.push({ id: parseInt(id,10), value: M.orbs[id] }); });
+  if(orbChanges.length) patch.talent_orbs = orbChanges;
+  if(a.gamaXp !== M.gamaXp) patch.gamatoto_xp = M.gamaXp;
+  if(a.engineers !== M.engineers) patch.ototo_engineers = M.engineers;
+  if(countDiff(a.cannons, M.cannons) > 0){ patch.ototo_cannons = {}; M.cannons.forEach(function(cn){ patch.ototo_cannons[cn.id] = [cn.dev].concat(cn.levels); }); }
+  if(a.shrineXp !== M.shrineXp) patch.cat_shrine_xp = M.shrineXp;
+  if(a.playFrames !== M.playFrames) patch.play_time_frames = M.playFrames;
+  var storyChanges = [];
+  M.story.forEach(function(ch, ci){ if(countDiff(a.story[ci], ch) > 0) storyChanges.push({ chapter: ci, stages: ch.stages.map(function(s){ return { clear_times: s.clear, treasure: s.treasure }; }) }); });
+  if(storyChanges.length) patch.story = storyChanges;
+  var modeChanges = {};
+  M.modes.forEach(function(md, mi){ if(md.available && a.modes[mi] && a.modes[mi].cleared !== md.cleared) modeChanges[md.key] = md.cleared; });
+  if(Object.keys(modeChanges).length) patch.map_modes = modeChanges;
+  M.cats.forEach(function(c, i){
+    var o = a.cats[i]; if(!o) return;
+    if(countDiff(o, c) > 0) catsPayload.push({ id: c.id, unlocked: c.unlocked, level: c.level, plus: c.plus, form: c.current_form, unlocked_forms: c.unlocked_forms });
+  });
+  return { patch: patch, cats: catsPayload, bulk: bulk };
+}
+function doConfirm(){
+  if(!loaded || dirtyCount() === 0) return;
+  var ov = $("#overlay"); ov.classList.add("show");
+  $("#resultView").style.display = "none";
+  $("#uploadingView").style.display = "block";
+  $("#warnList").innerHTML = ""; $("#upErr").classList.remove("show"); $("#btnUpClose").style.display = "none";
+  var steps = $$("#upSteps div");
+  steps.forEach(function(s, i){ s.classList.remove("done"); s.querySelector(".dot").textContent = i + 1; });
+  if(mode !== "backend"){
+    $("#upTitle").textContent = "目前是預覽模式";
+    $("#upSub").textContent = "範例存檔與備份檔模式不能上傳到遊戲伺服器，也不會產生任何號碼。請改用後端下載你的真實存檔後再確認上傳；目前的修改可以先用「下載備份 JSON」保存。";
+    $("#btnUpClose").style.display = "block";
+    return;
+  }
+  $("#upTitle").textContent = "上傳中…";
+  $("#upSub").textContent = "正在透過後端把修改送出，請稍等。";
+  var payload = buildPatch();
+  api("/api/save/" + sessionId + "/edit", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) })
+  .then(function(j){
+    if(!j.ok) throw new Error(errText(j));
+    steps[0].classList.add("done"); steps[0].querySelector(".dot").textContent = "✓";
+    if(j.warnings && j.warnings.length) $("#warnList").innerHTML = j.warnings.map(function(w){ return "<li>⚠️ " + esc(w) + "</li>"; }).join("");
+    if(M.unban) return api("/api/save/" + sessionId + "/unban", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+    return null;
+  })
+  .then(function(uj){
+    if(uj && !uj.ok) throw new Error(errText(uj));
+    return api("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+  })
+  .then(function(j){
+    if(!j.ok) throw new Error(errText(j));
+    steps[1].classList.add("done"); steps[1].querySelector(".dot").textContent = "✓";
+    steps[2].classList.add("done"); steps[2].querySelector(".dot").textContent = "✓";
+    $("#newTransfer").textContent = j.transfer_code;
+    $("#newConfirm").textContent = j.confirmation_code;
+    $("#newVer").textContent = (meta.ver || "").toUpperCase() + " 版・遊戲版本 " + (meta.gvStr || "");
+    $("#uploadingView").style.display = "none";
+    $("#resultView").style.display = "block";
+    meta.transfer = j.transfer_code;
+    S0 = JSON.stringify(M); bulkOps = {};
+    $("#step3").classList.add("done");
+    updateBar();
+  })
+  .catch(function(e){
+    $("#upTitle").textContent = "上傳沒有完成";
+    $("#upSub").textContent = "沒有拿到新號碼，你的修改還留在這一頁，可以修正後再試一次。";
+    var er = $("#upErr"); er.textContent = "⚠️ " + e.message; er.classList.add("show");
+    $("#btnUpClose").style.display = "block";
+  });
+}
+
+/* ================= 事件 ================= */
+document.addEventListener("DOMContentLoaded", function(){
+  /* 後端設定 */
+  try{ var saved = localStorage.getItem("bcsfe_backend_url"); if(saved) $("#backendUrl").value = saved; }catch(e){}
+  if(!$("#backendUrl").value && DEFAULT_BACKEND_URL) $("#backendUrl").value = DEFAULT_BACKEND_URL;
+  function bkMsg(ok, msg){
+    $("#bkDot").className = "dotst " + (ok ? "ok" : "bad");
+    var o = $("#bkOk"), e = $("#bkErr");
+    o.classList.toggle("show", ok); e.classList.toggle("show", !ok);
+    (ok ? o : e).textContent = msg;
+    $("#bkHint").textContent = ok ? "後端連線正常，可以開始下載存檔。" : "連線失敗時：確認後端有啟動、網址沒打錯；雲端休眠要等 30–60 秒再試。";
+  }
+  $("#btnBkSave").addEventListener("click", function(){
+    var v = $("#backendUrl").value.trim().replace(/\/+$/, "");
+    try{ if(v) localStorage.setItem("bcsfe_backend_url", v); else localStorage.removeItem("bcsfe_backend_url"); }catch(e){}
+    toast(v ? "已儲存後端網址" : "已清除後端網址");
+  });
+  $("#btnBkLocal").addEventListener("click", function(){ $("#backendUrl").value = "http://127.0.0.1:8765"; $("#btnBkSave").click(); toast("已改用本機後端，請先在本機啟動後端"); });
+  $("#btnBkTest").addEventListener("click", function(){
+    $("#btnBkSave").click();
+    bkMsg(true, "測試中…（雲端休眠時要等一下）");
+    api("/api/health").then(function(j){
+      if(j.ok) bkMsg(true, "✅ 後端連線成功：BCSFE " + (j.bcsfe_version || "") + " 已就緒。");
+      else bkMsg(false, "⚠️ 後端有回應，但狀態不正確：" + errText(j));
+    }).catch(function(e){ bkMsg(false, "⚠️ " + e.message); });
+  });
+
+  $("#btnDownload").addEventListener("click", doDownload);
+  $("#btnDemo").addEventListener("click", loadDemo);
+
+  /* 分頁 */
+  $("#tabs").addEventListener("click", function(e){
+    var b = e.target.closest("[data-tab]"); if(!b) return;
+    $$("#tabs button").forEach(function(x){ x.classList.toggle("on", x === b); });
+    $$(".panel").forEach(function(p){ p.classList.toggle("on", p.getAttribute("data-panel") === b.getAttribute("data-tab")); });
+  });
+
+  /* 通用 stepper / 輸入（delegated） */
+  document.addEventListener("click", function(e){
+    var st = e.target.closest("[data-step]");
+    if(st && M){ var p = st.getAttribute("data-path"); var mx = maxFor(p);
+      setPath(p, clamp((getPath(p)||0) + (+st.getAttribute("data-step")) * (mx >= 1000000 ? 1000 : mx >= 10000 ? 10 : 1), 0, mx)); syncPath(p); updateBar(); return; }
+    var mx2 = e.target.closest("[data-maxbtn]");
+    if(mx2 && M){ var p2 = mx2.getAttribute("data-maxbtn"); setPath(p2, parseInt(mx2.getAttribute("data-maxv"),10)); syncPath(p2); updateBar(); toast("已設為上限"); return; }
+    var own = e.target.closest("[data-own]");
+    if(own && M){ var i = +own.getAttribute("data-own"); M.cats[i].unlocked = !M.cats[i].unlocked; renderCats(); updateBar(); return; }
+    var chip = e.target.closest("[data-stage]");
+    if(chip && M){ var parts = chip.getAttribute("data-stage").split(":"); var s = M.story[+parts[0]].stages[+parts[1]];
+      s.treasure = (s.treasure + 1) % 4; if(s.treasure > 0 && s.clear === 0) s.clear = 1; renderStory(); updateBar(); return; }
+    var gold = e.target.closest("[data-chapgold]");
+    if(gold && M){ M.story[+gold.getAttribute("data-chapgold")].stages.forEach(function(s){ s.treasure = 3; if(s.clear===0) s.clear = 1; }); renderStory(); updateBar(); return; }
+    var clr = e.target.closest("[data-chapclear]");
+    if(clr && M){ M.story[+clr.getAttribute("data-chapclear")].stages.forEach(function(s){ s.treasure = 0; }); renderStory(); updateBar(); return; }
+    var cp = e.target.closest("[data-copy]");
+    if(cp){ var txt = document.getElementById(cp.getAttribute("data-copy")).textContent;
+      if(navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ toast("📋 已複製：" + txt); }); else toast(txt); return; }
+  });
+  function syncPath(p){
+    var inp = document.querySelector('[data-input="'+p+'"]');
+    if(inp) inp.value = getPath(p);
+    if(p.indexOf("orbs.") === 0) return;
+    if(p.indexOf("battleItems.") === 0) renderItems();
+  }
+  document.addEventListener("input", function(e){
+    if(!M) return;
+    var inp = e.target.closest("[data-input]");
+    if(inp){ var p = inp.getAttribute("data-input"); setPath(p, clamp(inp.value, 0, maxFor(p))); updateBar(); if(p==="scalars.catfood") updateOverview(); return; }
+    var lv = e.target.closest("[data-catlv]"); if(lv){ M.cats[+lv.getAttribute("data-catlv")].level = clamp(lv.value, 1, MAXV.cat_level); updateBar(); return; }
+    var pl = e.target.closest("[data-catplus]"); if(pl){ M.cats[+pl.getAttribute("data-catplus")].plus = clamp(pl.value, 0, MAXV.cat_plus); updateBar(); return; }
+    var em = e.target.closest("[data-endlessmins]"); if(em){ M.battleItems[+em.getAttribute("data-endlessmins")].endlessMins = clamp(em.value, 1, 100000); updateBar(); return; }
+    var rg = e.target.closest("[data-chaprange]");
+    if(rg){ var ci = +rg.getAttribute("data-chaprange"); var n = +rg.value;
+      M.story[ci].stages.forEach(function(s, si){ s.clear = si < n ? Math.max(s.clear, 1) : 0; });
+      $("#chapRangeVal"+ci).textContent = n + " / " + M.story[ci].stages.length;
+      clearTimeout(rg._t); rg._t = setTimeout(renderStory, 350); updateBar(); return; }
+    var mr = e.target.closest("[data-moderange]");
+    if(mr){ var mi = +mr.getAttribute("data-moderange"); M.modes[mi].cleared = +mr.value; $("#modeVal"+mi).textContent = "已通關 " + mr.value + " 關"; updateBar(); return; }
+    var cd = e.target.closest("[data-cannondev]"); if(cd){ M.cannons[+cd.getAttribute("data-cannondev")].dev = clamp(cd.value, 0, 30); updateBar(); return; }
+    var cl2 = e.target.closest("[data-cannonlv]"); if(cl2){ var pp = cl2.getAttribute("data-cannonlv").split(":"); M.cannons[+pp[0]].levels[+pp[1]] = clamp(cl2.value, 0, 30); updateBar(); return; }
+    if(e.target.id === "ptH" || e.target.id === "ptM" || e.target.id === "ptS"){
+      var sec = clamp($("#ptH").value,0,99999)*3600 + clamp($("#ptM").value,0,59)*60 + clamp($("#ptS").value,0,59);
+      M.playFrames = sec * 30; $("#ptFrames").textContent = "（存檔內記錄：" + fmt(M.playFrames) + " 幀）"; updateBar(); return; }
+    if(e.target.id === "catSearch"){ renderCats(); return; }
+  });
+  document.addEventListener("change", function(e){
+    if(!M) return;
+    var cf = e.target.closest("[data-catform]"); if(cf){ var i = +cf.getAttribute("data-catform"); M.cats[i].current_form = +cf.value; if(M.cats[i].unlocked_forms < +cf.value) M.cats[i].unlocked_forms = +cf.value; renderCats(); updateBar(); return; }
+    var uf = e.target.closest("[data-catunlockform]"); if(uf){ M.cats[+uf.getAttribute("data-catunlockform")].unlocked_forms = +uf.value; updateBar(); return; }
+    var en = e.target.closest("[data-endless]"); if(en){ M.battleItems[+en.getAttribute("data-endless")].endlessMode = en.value; renderItems(); updateBar(); return; }
+    if(e.target.id === "togUnban"){ M.unban = e.target.checked; updateBar(); return; }
+    if(e.target.id === "catFilter"){ renderCats(); return; }
+    if(e.target.id === "orbAttr" || e.target.id === "orbEffect"){ renderOrbs(); return; }
+  });
+
+  /* 貓咪工具 */
+  $("#btnAllCats").addEventListener("click", function(){ if(!M) return; M.cats.forEach(function(c){ c.unlocked = true; }); renderCats(); updateBar(); toast("已解鎖全部貓咪"); });
+  $("#btnNoCats").addEventListener("click", function(){ if(!M) return; M.cats.forEach(function(c){ c.unlocked = false; }); renderCats(); updateBar(); toast("已移除全部貓咪"); });
+  $("#btnLoadNames").addEventListener("click", function(){
+    if(mode !== "backend" || !sessionId){ toast("範例／備份模式的貓名已完整顯示"); return; }
+    var missing = M.cats.filter(function(c){ return !c.name; });
+    if(!missing.length){ toast("貓名已全部載入"); return; }
+    toast("開始載入其餘 " + missing.length + " 隻貓名，可能要等一下…");
+    var idx = 0;
+    (function next(){
+      if(idx >= missing.length){ renderCats(); toast("貓名載入完成"); return; }
+      var c = missing[idx++];
+      api("/api/cats?session=" + sessionId + "&id=" + c.id).then(function(j){
+        if(j.ok && j.cats && j.cats[0] && j.cats[0].name) c.name = j.cats[0].name;
+      }).catch(function(){}).then(function(){ if(idx % 10 === 0) renderCats(); next(); });
+    })();
+  });
+  $("#btnOrbMax").addEventListener("click", function(){
+    if(!M) return;
+    var a = $("#orbAttr").value, ef = $("#orbEffect").value;
+    M.orbInfos.forEach(function(o){ var l = orbLabel(o);
+      if(a !== "all" && l.attr !== a) return; if(ef !== "all" && (o.effect||"") !== ef) return; M.orbs[o.id] = 99; });
+    renderOrbs(); updateBar(); toast("已把篩選結果設為 99");
+  });
+
+  /* 一鍵快捷 */
+  $("#quickBar").addEventListener("click", function(e){
+    var b = e.target.closest("[data-quick]"); if(!b || !M) return;
+    var q = b.getAttribute("data-quick");
+    if(q === "resources"){ ["catfood","xp","np","leadership"].forEach(function(k){ M.scalars[k] = MAXV[k]; }); toast("💰 資源已全滿"); }
+    if(q === "tickets"){ ["normal_tickets","rare_tickets","platinum_tickets","legend_tickets","platinum_shards"].forEach(function(k){ M.scalars[k] = MAXV[k]; }); toast("🎟️ 券券已補滿"); }
+    if(q === "items"){ M.battleItems.forEach(function(it){ it.amount = MAXV.battle_items; }); M.catseyes = M.catseyes.map(function(){ return MAXV.catseyes; }); M.baseMaterials = M.baseMaterials.map(function(){ return MAXV.base_materials; }); toast("🎒 道具與素材已全滿"); }
+    if(q === "fruits"){ M.catfruit = M.catfruit.map(function(){ return MAXV.catfruit; }); M.catamins = M.catamins.map(function(){ return MAXV.catamins; }); toast("🍇 貓薄荷與貓力達已全滿"); }
+    if(q === "unlock_cats"){ bulkOps.unlock_all_cats = !bulkOps.unlock_all_cats; b.classList.toggle("on", !!bulkOps.unlock_all_cats); if(mode !== "backend" && bulkOps.unlock_all_cats) M.cats.forEach(function(c){ c.unlocked = true; }); toast(bulkOps.unlock_all_cats ? "已加入批次：全貓解鎖" : "已取消批次：全貓解鎖"); }
+    if(q === "max_cats"){ bulkOps.max_all_cats = !bulkOps.max_all_cats; b.classList.toggle("on", !!bulkOps.max_all_cats); toast(bulkOps.max_all_cats ? "已加入批次：全貓升滿" : "已取消批次：全貓升滿"); }
+    if(q === "clear_story"){ bulkOps.clear_story = !bulkOps.clear_story; b.classList.toggle("on", !!bulkOps.clear_story); if(mode !== "backend" && bulkOps.clear_story) M.story.forEach(function(ch){ ch.stages.forEach(function(s){ s.clear = Math.max(s.clear,1); }); }); toast(bulkOps.clear_story ? "已加入批次：主線全通關" : "已取消批次：主線全通關"); }
+    if(q === "max_treasures"){ bulkOps.max_treasures = !bulkOps.max_treasures; b.classList.toggle("on", !!bulkOps.max_treasures); if(mode !== "backend" && bulkOps.max_treasures) M.story.forEach(function(ch){ ch.stages.forEach(function(s){ s.treasure = 3; }); }); toast(bulkOps.max_treasures ? "已加入批次：寶物全金" : "已取消批次：寶物全金"); }
+    renderAll();
+  });
+
+  /* 還原 / 備份 */
+  $("#btnReset").addEventListener("click", function(){
+    if(!S0) return;
+    M = JSON.parse(S0); bulkOps = {};
+    $$("#quickBar [data-quick]").forEach(function(b){ b.classList.remove("on"); });
+    renderAll(); toast("↩️ 已還原成載入時的存檔");
+  });
+  function doExport(){
+    if(!M){ toast("尚未載入存檔"); return; }
+    var data = { app:"BCSFE-Web", ver: meta.ver, gvStr: meta.gvStr, inquiry: meta.inquiry, model: M };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "battlecats-save-backup.json"; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+    toast("💾 備份已下載");
+  }
+  $("#btnExport").addEventListener("click", doExport);
+  $("#btnImport").addEventListener("click", function(){ $("#fileInput").click(); });
+  $("#fileInput").addEventListener("change", function(){
+    var file = this.files[0]; if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var d = JSON.parse(reader.result);
+        if(!d.model) throw new Error("bad");
+        M = Object.assign(emptyModel(), d.model);
+        mode = "backup"; sessionId = null;
+        meta.ver = d.ver || "tw"; meta.gvStr = d.gvStr || ""; meta.inquiry = d.inquiry || "由備份檔案載入";
+        finishLoad("由備份檔案載入（備份模式：可繼續編輯與匯出，不能直接上傳到遊戲）");
+      }catch(err){ toast("⚠️ 檔案格式不正確，無法載入"); }
+    };
+    reader.readAsText(file);
+    this.value = "";
+  });
+
+  /* 確認 */
+  $("#btnConfirm").addEventListener("click", doConfirm);
+  $("#btnUpClose").addEventListener("click", function(){ $("#overlay").classList.remove("show"); });
+  $("#btnDone").addEventListener("click", function(){ $("#overlay").classList.remove("show"); toast("記得用新號碼回遊戲接回帳號喔！"); });
+  $("#overlay").addEventListener("click", function(e){ if(e.target === this && $("#resultView").style.display !== "none") this.classList.remove("show"); });
+});
+</script>
+</body>
+</html>
