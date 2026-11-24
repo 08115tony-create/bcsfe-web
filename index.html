@@ -515,12 +515,35 @@ function api(path, opts){
     throw new Error("連不到後端：請確認後端有啟動、網址正確；雲端免費方案休眠時要等 30–60 秒喚醒後再試。");
   });
 }
+/* 上傳／送出時若遇到「連不到後端」（例如後端正在休眠喚醒），等 10 秒自動再試一次。
+   edit 與 upload 都是冪等的：重送同一份修改不會重複加東西；
+   upload 重送只會產生一組新的號碼，舊的作廢，所以安全。
+   解封（unban）不是冪等的，不走這裡。 */
+function apiRetry(path, opts){
+  return api(path, opts).catch(function(e){
+    if(e && e.message && e.message.indexOf("連不到後端") === 0){
+      $("#upSub").textContent = "後端沒回應（可能正在休眠喚醒），10 秒後自動再試一次…";
+      return new Promise(function(res){ setTimeout(res, 10000); }).then(function(){ return api(path, opts); });
+    }
+    throw e;
+  });
+}
+/* 免費後端 15 分鐘沒人連就會休眠，休眠後連線失效。
+   只要編輯器頁面開著、且處於後端連線狀態，每 10 分鐘輕敲一次 /api/health，
+   讓後端在編輯期間保持醒著；關掉頁面就自動停。 */
+var keepAliveTimer = null;
+function startKeepAlive(){
+  if(keepAliveTimer) return;
+  keepAliveTimer = setInterval(function(){
+    if(mode === "backend" && sessionId){ api("/api/health").catch(function(){}); }
+  }, 10 * 60 * 1000);
+}
 var ERR_TEXT = {
   invalid_codes: "號碼錯誤或已失效，請重新在遊戲內產生一組新號碼，並確認版本沒有選錯（台灣版與日本版不要搞混）。",
   network_error: "後端連不到遊戲伺服器，請檢查網路後重試。",
   download_failed: "下載時發生例外，請重試一次。",
   upload_failed: "上傳失敗，請重試一次；仍失敗請改用原版 BCSFE 再試。",
-  session_not_found: "連線階段已失效（後端可能重啟過），請重新下載存檔。",
+  session_not_found: "連線階段已失效（後端可能休眠或重啟過），請用同一組號碼重新下載，再用「載入備份 JSON」把修改套回來。",
   missing_codes: "請輸入轉移號碼與認證號碼。",
   bad_cc: "版本代碼不正確。",
   unban_failed: "解封失敗，請重試。"
@@ -805,6 +828,7 @@ function finishLoad(label){
   S0 = JSON.stringify(M);
   bulkOps = {};
   loaded = true;
+  if(mode === "backend" && sessionId) startKeepAlive();
   $("#accountBar").classList.add("show");
   $("#quickBar").classList.add("show");
   $("#editor").classList.add("show");
@@ -1022,7 +1046,7 @@ function doConfirm(){
   $("#upTitle").textContent = "上傳中…";
   $("#upSub").textContent = "正在透過後端把修改送出，請稍等。";
   var payload = buildPatch();
-  api("/api/save/" + sessionId + "/edit", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) })
+  apiRetry("/api/save/" + sessionId + "/edit", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) })
   .then(function(j){
     if(!j.ok) throw new Error(errText(j));
     steps[0].classList.add("done"); steps[0].querySelector(".dot").textContent = "✓";
@@ -1032,7 +1056,7 @@ function doConfirm(){
   })
   .then(function(uj){
     if(uj && !uj.ok) throw new Error(errText(uj));
-    return api("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+    return apiRetry("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
   })
   .then(function(j){
     if(!j.ok) throw new Error(errText(j));
@@ -1051,7 +1075,11 @@ function doConfirm(){
   .catch(function(e){
     $("#upTitle").textContent = "上傳沒有完成";
     $("#upSub").textContent = "沒有拿到新號碼，你的修改還留在這一頁，可以修正後再試一次。";
-    var er = $("#upErr"); er.textContent = "⚠️ " + e.message; er.classList.add("show");
+    var msg = e.message;
+    if(msg && msg.indexOf("連線階段已失效") !== -1){
+      msg += "\n後端休眠後連線會失效：請先用同一組號碼重新下載，再點「載入備份 JSON」把剛剛的修改套回來，然後重新上傳。";
+    }
+    var er = $("#upErr"); er.textContent = "⚠️ " + msg; er.classList.add("show");
     $("#btnUpClose").style.display = "block";
   });
 }
@@ -1219,6 +1247,20 @@ document.addEventListener("DOMContentLoaded", function(){
       try{
         var d = JSON.parse(reader.result);
         if(!d.model) throw new Error("bad");
+        if(mode === "backend" && sessionId){
+          /* 已經連上真實存檔時，備份 JSON 直接套用到現在的連線（例如後端休眠後
+             重新下載，修改不用重做一遍）。詢問碼不同代表不是同一個帳號，拒絕套用。 */
+          if(d.inquiry && meta.inquiry && d.inquiry !== meta.inquiry){
+            toast("⚠️ 這份備份不是這個帳號的，不能套用到現在的連線");
+            return;
+          }
+          M = Object.assign(emptyModel(), d.model);
+          bulkOps = {};
+          $$("#quickBar [data-quick]").forEach(function(b){ b.classList.remove("on"); });
+          renderAll(); updateBar();
+          toast("✅ 已套用備份的修改，請檢查後再按確認並上傳");
+          return;
+        }
         M = Object.assign(emptyModel(), d.model);
         mode = "backup"; sessionId = null;
         meta.ver = d.ver || "tw"; meta.gvStr = d.gvStr || ""; meta.inquiry = d.inquiry || "由備份檔案載入";
