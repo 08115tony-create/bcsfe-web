@@ -249,7 +249,7 @@ footer a{color:var(--ink2)}
     <div class="connect-grid">
       <div class="field">
         <label for="transferCode">轉移號碼</label>
-        <input class="code" id="transferCode" inputmode="numeric" autocomplete="off" placeholder="9 碼數字" maxlength="20">
+        <input class="code" id="transferCode" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="9 碼英文＋數字" maxlength="20">
         <div class="hint">遊戲畫面上方那組數字</div>
       </div>
       <div class="field">
@@ -858,9 +858,11 @@ function modelFromBackend(save, summary){
 function doDownload(){
   var err = $("#connectErr"); err.classList.remove("show");
   if(!backendBase()){ err.textContent = "⚠️ 後端尚未設定，請稍後再試。"; err.classList.add("show"); return; }
-  /* 全形數字（中文輸入法常會打出 ０-９）先轉半形再取數字，不然會被誤判為空白 */
+  /* 轉移號碼是 9 碼「英文＋數字」（例如 2cb97d9be），絕對不能只留數字，英文字母清掉號碼就錯了。
+     全形英數字（中文輸入法常會打出 ０-９、ａ-ｆ）先轉半形、轉小寫，再去掉空白與分隔符號。 */
+  var normTransfer = function(s){ return (s || "").replace(/[０-９ａ-ｚＡ-Ｚ]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).toLowerCase().replace(/[^0-9a-z]/g, ""); };
   var normDigits = function(s){ return (s || "").replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/\D/g,""); };
-  var tc = normDigits($("#transferCode").value);
+  var tc = normTransfer($("#transferCode").value);
   var cc = normDigits($("#confirmCode").value);
   if(!tc){ err.textContent = "⚠️ 請輸入轉移號碼。"; err.classList.add("show"); return; }
   if(cc.length !== 4){ err.textContent = "⚠️ 認證號碼要是 4 碼數字，請再檢查一次。"; err.classList.add("show"); return; }
