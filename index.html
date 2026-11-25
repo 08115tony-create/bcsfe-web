@@ -1199,7 +1199,7 @@ function applyQuickPreviews(){
       var oc = s0s[ci]; if(!oc) return;
       ch.stages.forEach(function(s, si){
         var os = oc.stages[si]; if(!os) return;
-        if(bulkOps.clear_story) s.clear = Math.max(s.clear, 1); else s.clear = os.clear;
+        if(bulkOps.clear_story || bulkOps.max_treasures) s.clear = Math.max(s.clear, 1); else s.clear = os.clear;
         if(bulkOps.max_treasures) s.treasure = 3; else s.treasure = os.treasure;
       });
     });
@@ -1345,7 +1345,7 @@ document.addEventListener("DOMContentLoaded", function(){
     if(q === "unlock_cats"){ bulkOps.unlock_all_cats = !bulkOps.unlock_all_cats; b.classList.toggle("on", !!bulkOps.unlock_all_cats); applyQuickPreviews(); toast(bulkOps.unlock_all_cats ? "已加入批次：全貓解鎖" : "已取消批次：全貓解鎖"); }
     if(q === "max_cats"){ bulkOps.max_all_cats = !bulkOps.max_all_cats; b.classList.toggle("on", !!bulkOps.max_all_cats); applyQuickPreviews(); toast(bulkOps.max_all_cats ? "已加入批次：全貓升滿" : "已取消批次：全貓升滿"); }
     if(q === "clear_story"){ bulkOps.clear_story = !bulkOps.clear_story; b.classList.toggle("on", !!bulkOps.clear_story); applyQuickPreviews(); toast(bulkOps.clear_story ? "已加入批次：主線全通關" : "已取消批次：主線全通關"); }
-    if(q === "max_treasures"){ bulkOps.max_treasures = !bulkOps.max_treasures; b.classList.toggle("on", !!bulkOps.max_treasures); applyQuickPreviews(); toast(bulkOps.max_treasures ? "已加入批次：寶物全金" : "已取消批次：寶物全金"); }
+    if(q === "max_treasures"){ bulkOps.max_treasures = !bulkOps.max_treasures; b.classList.toggle("on", !!bulkOps.max_treasures); applyQuickPreviews(); toast(bulkOps.max_treasures ? "已加入批次：寶物全金（金寶＋通關）" : "已取消批次：寶物全金"); }
     renderAll();
   });
 
