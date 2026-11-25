@@ -176,7 +176,7 @@ a{color:var(--blue)}
 .obrow:last-child{border-bottom:none}
 .obchip{min-width:64px;border:1.5px solid var(--line2);background:var(--card);border-radius:9px;padding:6px 8px;font-size:12.5px;font-weight:800;color:var(--ink3);cursor:pointer;text-align:center}
 .obchip.cleared{border-color:var(--green);color:var(--ink)}
-.obchip.unoccurred{opacity:.45;cursor:not-allowed;border-style:dashed}
+.obchip.unoccurred{border-style:dashed}
 .obchip .cur{display:block;font-size:10.5px;color:var(--accent);font-weight:800}
 .tlist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:720px){.tlist{grid-template-columns:1fr}}
@@ -815,7 +815,7 @@ function renderModes(){
         '<button class="btn btn-ghost btn-small" data-obclearall="'+ch.chapter+'">本章全部清除</button></div>'+
         '<div>'+ch.stages.map(function(s){
           var occ = (s.occurred !== undefined) ? s.occurred : (s.cleared || s.current);
-          return '<button class="obchip'+(s.cleared?" cleared":"")+(occ?"":" unoccurred")+'" data-outbreak="'+ch.chapter+":"+s.stage+'" title="第 '+(s.stage+1)+' 關・'+(s.cleared?"已清除":(occ?"未清除":"尚未發生，無法修改"))+(s.current?"・現在正在襲擊":"")+'">第 '+(s.stage+1)+' 關'+(s.cleared?" ✓":"")+(s.current?'<span class="cur">現行中</span>':'')+(occ?"":'<span class="cur" style="color:var(--ink3)">未發生</span>')+'</button>';
+          return '<button class="obchip'+(s.cleared?" cleared":"")+(occ?"":" unoccurred")+'" data-outbreak="'+ch.chapter+":"+s.stage+'" title="第 '+(s.stage+1)+' 關・'+(s.cleared?"已清除":(occ?"未清除":"尚未發生（可點改為已清除）"))+(s.current?"・現在正在襲擊":"")+'">第 '+(s.stage+1)+' 關'+(s.cleared?" ✓":"")+(s.current?'<span class="cur">現行中</span>':'')+(occ?"":'<span class="cur" style="color:var(--ink3)">未發生</span>')+'</button>';
         }).join("")+'</div></div>';
     }).join("") || '<p class="sub">這份存檔沒有不死篇襲擊紀錄。</p>';
     /* 逐關模式：每張圖一個可收合區塊，只渲染打開那張圖、作用中那顆星的格子（真傳說 1,124 格不能一次全畫） */
@@ -1462,14 +1462,12 @@ document.addEventListener("DOMContentLoaded", function(){
     if(ob && M){ var op = ob.getAttribute("data-outbreak").split(":");
       var ch = M.modes.outbreaks.chapters.filter(function(c){ return c.chapter === +op[0]; })[0];
       var stg = ch.stages.filter(function(s){ return s.stage === +op[1]; })[0];
-      var occ = (stg.occurred !== undefined) ? stg.occurred : (stg.cleared || stg.current);
-      if(!occ){ toast("此襲擊尚未發生，無法修改"); return; }
       stg.cleared = !stg.cleared; renderModes(); updateBar(); return; }
     var oba = e.target.closest("[data-obclearall]");
     if(oba && M){ var ch2 = M.modes.outbreaks.chapters.filter(function(c){ return c.chapter === +oba.getAttribute("data-obclearall"); })[0];
       var n = 0;
-      ch2.stages.forEach(function(s){ var o2 = (s.occurred !== undefined) ? s.occurred : (s.cleared || s.current); if(o2 && !s.cleared){ s.cleared = true; n++; } });
-      renderModes(); updateBar(); toast(n ? "本章已發生的襲擊已全部清除（"+n+" 個）" : "本章還沒有發生過的襲擊"); return; }
+      ch2.stages.forEach(function(s){ if(!s.cleared){ s.cleared = true; n++; } });
+      renderModes(); updateBar(); toast(n ? "本章襲擊已全部清除（"+n+" 個）" : "本章襲擊已全部清除"); return; }
     var cp = e.target.closest("[data-copy]");
     if(cp){ var txt = document.getElementById(cp.getAttribute("data-copy")).textContent;
       if(navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ toast("📋 已複製：" + txt); }); else toast(txt); return; }
