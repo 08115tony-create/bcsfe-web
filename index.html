@@ -411,7 +411,7 @@ footer a{color:var(--ink2)}
       <h3>加碼多多</h3>
       <div class="rows" id="gamaRows"></div>
       <div class="note" id="gamaNote">加碼多多等級由經驗值決定，遊戲會依經驗值自動計算等級；隊員人數為目前編制，僅供查看。</div>
-      <h3>奧托・貓咪砲與工程師</h3>
+      <h3>貓咪砲與城堡開發助手</h3>
       <div class="rows" id="ototoRows"></div>
       <div id="cannonList"></div>
       <h3>貓咪神社</h3>
@@ -646,7 +646,7 @@ function emptyModel(){
     catamins:[0,0,0],
     orbs:{}, orbInfos:[],
     cats:[], story:[], modes:{},
-    gamaXp:0, gamaHelpers:[], gamaMembers:[], engineers:0, cannons:[], shrineXp:0, modesUnlockAll:false,
+    gamaXp:0, gamaHelpers:[], gamaMembers:[], engineers:0, maxEngineers:5, cannons:[], shrineXp:0, modesUnlockAll:false,
     playFrames:0, unban:false
   };
 }
@@ -684,6 +684,7 @@ function maxFor(p){
   if(p.indexOf("baseMaterials") === 0) return MAXV.base_materials;
   if(p.indexOf("battleItems") === 0) return MAXV.battle_items;
   if(p.indexOf("orbs.") === 0) return MAXV.talent_orbs;
+  if(p === "engineers") return (typeof M !== "undefined" && M && M.maxEngineers) || 5;
   return 999999999;
 }
 function renderScalars(){
@@ -879,7 +880,7 @@ function renderBase(){
   $("#gamaRows").innerHTML =
     rowHTML("🧭","加碼多多經驗值","探險隊經驗（等級由遊戲依經驗值計算）","gamaXp", M.gamaXp, 999999999, false) +
     helpersHTML;
-  $("#ototoRows").innerHTML = rowHTML("👷","奧托工程師人數","開發人力","engineers", M.engineers, 99, false);
+  $("#ototoRows").innerHTML = rowHTML("👷","城堡開發助手","開發人力","engineers", M.engineers, M.maxEngineers || 5, false);
   $("#cannonList").innerHTML = M.cannons.length ? '<div class="rows">'+M.cannons.map(function(cn, ci){
     var cname = cn.name || ("貓咪砲 #"+cn.id);
     return '<div class="row-item"><div class="emoji">💣</div><div class="meta"><div class="name">'+esc(cname)+'</div><div class="desc">開發度與各部件等級（以遊戲資料為準）</div></div>'+
@@ -975,15 +976,24 @@ function modelFromBackend(save, summary){
   else if(typeof v.gamatoto_helpers === "number"){ m.gamaHelpers = []; for(var _hi=0; _hi<v.gamatoto_helpers; _hi++) m.gamaHelpers.push(-1); }
   if(Array.isArray(v.gamatoto_members)) m.gamaMembers = v.gamatoto_members;
   if(typeof v.ototo_engineers === "number") m.engineers = v.ototo_engineers;
+  if(typeof v.ototo_max_engineers === "number" && v.ototo_max_engineers > 0) m.maxEngineers = v.ototo_max_engineers;
   if(typeof v.cat_shrine_xp === "number") m.shrineXp = v.cat_shrine_xp;
   if(typeof v.play_time_frames === "number") m.playFrames = v.play_time_frames;
-  if(v.ototo_cannons && v.ototo_cannons.cannons){
-    Object.keys(v.ototo_cannons.cannons).forEach(function(id){
-      var arr = v.ototo_cannons.cannons[id] || [];
-      var nm = (v.ototo_cannon_names || {})[id] || {};
-      m.cannons.push({ id:id, dev: arr[0]||0, levels: arr.slice(1), name: nm.name || null, parts: nm.parts || null });
+  /* 貓咪砲：存檔砲 id 與遊戲資料砲名 key 的聯集，依 id 數字排序；
+     存檔沒有的砲預設未開發（dev 0、三部件 0），改了才會寫進存檔。 */
+  (function(){
+    var saveCannons = (v.ototo_cannons && v.ototo_cannons.cannons) || {};
+    var names = v.ototo_cannon_names || {};
+    var ids = {}, k;
+    for(k in saveCannons) ids[k] = 1;
+    for(k in names) ids[k] = 1;
+    Object.keys(ids).sort(function(a,b){ return (+a) - (+b); }).forEach(function(id){
+      var arr = saveCannons[id] || [];
+      var nm = names[id] || {};
+      var inSave = Object.prototype.hasOwnProperty.call(saveCannons, id);
+      m.cannons.push({ id:id, dev: arr[0]||0, levels: inSave ? arr.slice(1) : [0,0,0], name: nm.name || null, parts: nm.parts || null, inSave: inSave });
     });
-  }
+  })();
   m.cats = (save.cats || []).map(function(c){
     var rIdx = null;
     if(typeof c.rarity === "number") rIdx = c.rarity;
@@ -1175,11 +1185,16 @@ function loadDemo(){
     ];
     /* 範例貓咪砲：真名與部件名取自遊戲資料 CastleRecipeDescriptions.csv（台版） */
     m.cannons = [
-      {id:"0", dev:0, levels:[0], name:"貓咪砲", parts:["強化貓咪城", "", ""]},
-      {id:"1", dev:3, levels:[5, 3, 2], name:"低速砲", parts:["【開發低速砲的主砲】", "【改造低速砲的基座】", "【改造低速砲的裝飾】"]},
-      {id:"2", dev:3, levels:[3, 1, 1], name:"鐵壁砲", parts:["【開發鐵壁砲的主砲】", "【改造鐵壁砲的基座】", "【改造鐵壁砲的裝飾】"]}
+      {id:"0", dev:0, levels:[0], name:"貓咪砲", parts:["強化貓咪城", "", ""], inSave:true},
+      {id:"1", dev:3, levels:[5, 3, 2], name:"低速砲", parts:["【開發低速砲的主砲】", "【改造低速砲的基座】", "【改造低速砲的裝飾】"], inSave:true},
+      {id:"2", dev:3, levels:[3, 1, 1], name:"鐵壁砲", parts:["【開發鐵壁砲的主砲】", "【改造鐵壁砲的基座】", "【改造鐵壁砲的裝飾】"], inSave:true},
+      {id:"3", dev:0, levels:[0,0,0], name:"閃雷砲", parts:["【開發閃雷砲的主砲】", "【改造閃雷砲的基座】", "【改造閃雷砲的裝飾】"], inSave:true},
+      {id:"4", dev:0, levels:[0,0,0], name:"水喉砲", parts:["【開發水喉砲的主砲】", "【開發水喉砲的基座】", "【開發水喉砲的裝飾】"], inSave:true},
+      {id:"5", dev:0, levels:[0,0,0], name:"天使砲", parts:["【開發天使砲的主砲】", "【改造天使砲的基座】", "【改造天使砲的裝飾】"], inSave:true},
+      {id:"6", dev:0, levels:[0,0,0], name:"斬盾砲", parts:["【開發斬盾砲的主砲】", "【改造斬盾砲的基座】", "【改造斬盾砲的裝飾】"], inSave:true},
+      {id:"7", dev:0, levels:[0,0,0], name:"詛咒砲", parts:["【開發詛咒砲的主砲】", "【改造詛咒砲的基座】", "【改造詛咒砲的裝飾】"], inSave:true}
     ];
-    m.engineers = 9; m.shrineXp = 12000; m.playFrames = 386*3600*30;
+    m.engineers = 5; m.shrineXp = 12000; m.playFrames = 386*3600*30;
     mode = "demo"; sessionId = null;
     meta.inquiry = "範例（非真實帳號）"; meta.gvStr = "範例資料"; meta.cc = "tw";
     M = m;
@@ -1213,7 +1228,23 @@ function buildPatch(){
   if(a.gamaXp !== M.gamaXp) patch.gamatoto_xp = M.gamaXp;
   if(countDiff(a.gamaHelpers, M.gamaHelpers) > 0) patch.gamatoto_helpers = M.gamaHelpers.slice();
   if(a.engineers !== M.engineers) patch.ototo_engineers = M.engineers;
-  if(countDiff(a.cannons, M.cannons) > 0){ patch.ototo_cannons = {}; M.cannons.forEach(function(cn){ patch.ototo_cannons[cn.id] = [cn.dev].concat(cn.levels); }); }
+  /* 貓咪砲：只有「存檔原有的砲被改」或「新砲有非零值」才送；送時含存檔原有全部砲
+     ＋有非零值的新砲，全零的新砲不送（避免沒動砲就憑空新建全零砲紀錄）。 */
+  (function(){
+    var origById = {};
+    (a.cannons || []).forEach(function(cn){ origById[cn.id] = cn; });
+    function isNonZero(cn){ return (cn.dev > 0) || cn.levels.some(function(lv){ return lv > 0; }); }
+    function isChanged(cn){
+      var o = origById[cn.id] || {};
+      return (o.dev !== cn.dev) || (JSON.stringify(o.levels || []) !== JSON.stringify(cn.levels || []));
+    }
+    var needSend = false;
+    M.cannons.forEach(function(cn){ if((cn.inSave && isChanged(cn)) || (!cn.inSave && isNonZero(cn))) needSend = true; });
+    if(!needSend) return;
+    var out = {};
+    M.cannons.forEach(function(cn){ if(cn.inSave || isNonZero(cn)) out[cn.id] = [cn.dev].concat(cn.levels); });
+    patch.ototo_cannons = out;
+  })();
   if(a.shrineXp !== M.shrineXp) patch.cat_shrine_xp = M.shrineXp;
   if(a.playFrames !== M.playFrames) patch.play_time_frames = M.playFrames;
   var storyChanges = [];
