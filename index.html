@@ -520,8 +520,8 @@ function api(path, opts){
 }
 /* 上傳／送出時若遇到「連不到後端」（例如後端正在休眠喚醒），自動再試幾次。
    第一次等 10 秒，第二次等 30 秒（喚醒約需 1 分鐘）。
-   edit 與 upload 都是冪等的：重送同一份修改不會重複加東西；
-   upload 重送只會產生一組新的號碼，舊的作廢，所以安全。
+   edit 與 upload 開始都是冪等的：重送同一份修改不會重複加東西；
+   upload 重送時若已有任務在跑會回 409 並給同一個 job_id，不會重複建任務，所以安全。
    解封（unban）不是冪等的，不走這裡。 */
 function apiRetry(path, opts, retries){
   var left = (typeof retries === "number") ? retries : 1;
@@ -1049,7 +1049,7 @@ function upTick(){
   upSecs++;
   var el = $("#upSub"); if(!el) return;
   if(upPhase === "edit") el.textContent = "正在把修改送到後端…（已等 " + upSecs + " 秒，雲端後端剛喚醒時這步可能要等約 1 分鐘）";
-  else if(upPhase === "upload") el.textContent = "正在上傳到遊戲伺服器…（已等 " + upSecs + " 秒，請不要關掉頁面）";
+  else if(upPhase === "upload") el.textContent = "正在上傳到遊戲伺服器（背景執行中，再慢也不會斷線）…（已等 " + upSecs + " 秒，請不要關掉頁面）";
   else if(upPhase === "retry") el.textContent = "後端沒回應，自動重試中…（已等 " + upSecs + " 秒）";
   else if(upPhase === "recover") el.textContent = "連線失效，正在用同一組號碼自動重新下載…（已等 " + upSecs + " 秒）";
 }
@@ -1091,6 +1091,33 @@ function doConfirm(){
     });
   };
   var throwErr = function(j){ var e = new Error(errText(j)); e.code = j.error; throw e; };
+  /* 非同步上傳：後端在背景傳 PONOS，前端每 5 秒問一次進度。
+     同步等會被雲端代理在約 100 秒切斷，所以上傳絕對不能用一次請求等到底。
+     409 表示已有任務在跑，直接輪詢那個任務就好。 */
+  var startUploadJob = function(){
+    return apiRetry("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" }, 1)
+    .then(function(j){
+      if(j.ok) return pollUploadJob(j.job_id, 0);
+      if(j.error === "upload_in_progress" && j.job_id) return pollUploadJob(j.job_id, 0);
+      throwErr(j);
+    });
+  };
+  var pollUploadJob = function(jobId, polls){
+    if(polls >= 120) return Promise.reject(new Error("上傳逾時（已等 10 分鐘），請關閉後再試一次。"));
+    return new Promise(function(resolve){ setTimeout(resolve, 5000); })
+    .then(function(){ return api("/api/upload/" + jobId); })
+    .then(function(j){
+      if(j.ok && j.status === "done") return j;
+      if(j.ok && j.status === "failed"){ var e = new Error(j.hint || "上傳失敗，請重試一次。"); e.code = j.error; throw e; }
+      if(j.ok) return pollUploadJob(jobId, polls + 1);
+      if(j.error === "job_not_found"){ var e2 = new Error(errText(j)); e2.code = "session_not_found"; throw e2; }
+      var e3 = new Error(errText(j)); e3.code = j.error; throw e3;
+    })
+    .catch(function(e){
+      if(e && e.code) throw e;
+      return pollUploadJob(jobId, polls + 1);
+    });
+  };
   var runFlow = function(){
     return apiRetry("/api/save/" + sessionId + "/edit", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }, 1)
     .then(function(j){
@@ -1103,7 +1130,7 @@ function doConfirm(){
     .then(function(uj){
       if(uj && !uj.ok) throwErr(uj);
       upPhase = "upload";
-      return apiRetry("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" }, 2);
+      return startUploadJob();
     })
     .then(function(j){
       if(!j.ok) throwErr(j);
