@@ -1173,7 +1173,7 @@ function applyQuickPreviews(){
       ch.stages.forEach(function(s, si){
         var os = oc.stages[si]; if(!os) return;
         if(bulkOps.clear_story) s.clear = Math.max(s.clear, 1); else s.clear = os.clear;
-        if(bulkOps.max_treasures){ s.treasure = 3; if(s.clear === 0) s.clear = 1; } else s.treasure = os.treasure;
+        if(bulkOps.max_treasures) s.treasure = 3; else s.treasure = os.treasure;
       });
     });
   } else if(quickSnap.story){
