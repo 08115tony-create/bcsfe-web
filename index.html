@@ -803,7 +803,10 @@ function renderCats(){
     /* 型態下拉顯示該貓真正的型態名稱（例如 姆特貓／狂亂姆特貓／覺醒姆特貓），沒有圖鑑資料時才用通用名稱 */
     var forms = (c.form_names && c.form_names.length) ? c.form_names : FORM_NAMES;
     var formOpts = function(cur){ return forms.map(function(fn, fi){ return '<option value="'+fi+'"'+(cur===fi?" selected":"")+'>'+esc(fn)+'</option>'; }).join(""); };
-    var unlockOpts = function(cur){
+    var unlockOpts = function(cat){
+      /* 已解鎖層級：第四型態用 fourth_form=2 表示，unlocked_forms 上限是 3；
+         有第四型態時選中最後一個選項（值 = forms.length），否則按 unlocked_forms 選 */
+      var cur = (cat.fourth_form === 2) ? forms.length : (cat.unlocked_forms || 0);
       var opts = '<option value="0"'+(cur===0?" selected":"")+'>未解鎖</option>';
       forms.forEach(function(fn, fi){ opts += '<option value="'+(fi+1)+'"'+(cur===fi+1?" selected":"")+'>已解鎖至「'+esc(fn)+'」</option>'; });
       return opts;
@@ -817,7 +820,7 @@ function renderCats(){
       '<div class="lvrow"><label>Lv</label><input class="num" type="number" min="1" max="'+(c.max_base || MAXV.cat_level)+'" data-catlv="'+i+'" value="'+c.level+'">'+
       '<label>+</label><input class="num" type="number" min="0" max="'+MAXV.cat_plus+'" data-catplus="'+i+'" value="'+c.plus+'"></div>'+
       '<div class="frow"><div><label>目前型態</label><select data-catform="'+i+'">'+formOpts(c.current_form)+'</select></div>'+
-      '<div><label>已解鎖型態</label><select data-catunlockform="'+i+'">'+unlockOpts(c.unlocked_forms)+'</select></div></div></div>';
+      '<div><label>已解鎖型態</label><select data-catunlockform="'+i+'">'+unlockOpts(c)+'</select></div></div></div>';
   }).join("") || '<p class="sub">找不到符合的貓咪。</p>';
   updateOverview();
 }
@@ -1361,7 +1364,7 @@ function buildPatch(){
   if(Object.keys(modesPatch).length) patch.modes = modesPatch;
   M.cats.forEach(function(c, i){
     var o = a.cats[i]; if(!o) return;
-    if(countDiff(o, c) > 0) catsPayload.push({ id: c.id, unlocked: c.unlocked, level: c.level, plus: c.plus, form: c.current_form, unlocked_forms: c.unlocked_forms });
+    if(countDiff(o, c) > 0) catsPayload.push({ id: c.id, unlocked: c.unlocked, level: c.level, plus: c.plus, form: c.current_form, unlocked_forms: c.unlocked_forms, fourth_form: c.fourth_form });
   });
   return { patch: patch, cats: catsPayload, bulk: bulk };
 }
@@ -1704,9 +1707,9 @@ document.addEventListener("DOMContentLoaded", function(){
   });
   document.addEventListener("change", function(e){
     if(!M) return;
-    var cf = e.target.closest("[data-catform]"); if(cf){ var i = +cf.getAttribute("data-catform"); M.cats[i].current_form = +cf.value; if(M.cats[i].unlocked_forms < +cf.value) M.cats[i].unlocked_forms = +cf.value; renderCats(); updateBar(); return; }
+    var cf = e.target.closest("[data-catform]"); if(cf){ var i = +cf.getAttribute("data-catform"); var cc = M.cats[i]; var fv = +cf.value; cc.current_form = fv; var fn = (cc.form_names && cc.form_names.length) ? cc.form_names.length : FORM_NAMES.length; if(fv === 3 && fn === 4){ cc.fourth_form = 2; cc.unlocked_forms = 3; } else if(cc.unlocked_forms < fv + 1){ cc.unlocked_forms = Math.min(3, fv + 1); } renderCats(); updateBar(); return; }
     var gh = e.target.closest("[data-gamahelper]"); if(gh){ M.gamaHelpers[+gh.getAttribute("data-gamahelper")] = +gh.value; renderBase(); updateBar(); return; }
-    var uf = e.target.closest("[data-catunlockform]"); if(uf){ M.cats[+uf.getAttribute("data-catunlockform")].unlocked_forms = +uf.value; updateBar(); return; }
+    var uf = e.target.closest("[data-catunlockform]"); if(uf){ var ui = +uf.getAttribute("data-catunlockform"); var uc = M.cats[ui]; var uv = +uf.value; var un = (uc.form_names && uc.form_names.length) ? uc.form_names.length : FORM_NAMES.length; if(uv === un && un === 4){ uc.unlocked_forms = 3; uc.fourth_form = 2; } else if(uv === 0){ uc.unlocked_forms = 0; uc.fourth_form = 0; } else { uc.unlocked_forms = uv; uc.fourth_form = 0; } var maxFormIdx = (uv === un && un === 4) ? 3 : Math.max(0, uv - 1); if(uc.current_form > maxFormIdx) uc.current_form = maxFormIdx; renderCats(); updateBar(); return; }
     var en = e.target.closest("[data-endless]"); if(en){ M.battleItems[+en.getAttribute("data-endless")].endlessMode = en.value; renderItems(); updateBar(); return; }
     if(e.target.id === "togUnban"){ M.unban = e.target.checked; updateBar(); return; }
     if(e.target.id === "catFilter"){ renderCats(); return; }
