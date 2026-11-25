@@ -716,7 +716,47 @@ function renderFruit(){
   var names = ["A","B","C","D","E"];
   $("#catamins").innerHTML = M.catamins.map(function(v, i){ return rowHTML("🧪", "喵力達 "+(names[i]||("第 "+(i+1)+" 種")), "加碼多多探險加速", "catamins."+i, v, MAXV.catamins, false); }).join("");
 }
+/* 特殊玉顯示：遊戲資料原文 → 玩家看得懂的表上名稱，每級附該級數值。
+   數值來自後端 orb_infos 的 value 欄（遊戲資料 equipmentlist）。
+   fmt：single=單一數值、first=取第一個數值、dual=兩個數值並列（超生命體：攻擊／受傷）、
+   tenth=數值÷10（貓咪砲充電的原始值是 0.1% 單位，3＝0.3%）。
+   表上有但遊戲資料沒有的（首殺獎金++、爆波耐性）不會出現在清單裡。 */
+var SPECIAL_ORB_DISPLAY = {
+  "遺留小烈波%@": { name: "死後小烈波", fmt: "single" },
+  "抗波耐性%@": { name: "波動耐性", fmt: "single" },
+  "金錢回饋%@": { name: "死後返還金錢", fmt: "single" },
+  "抗飛耐性%@": { name: "打飛耐性", fmt: "single" },
+  "傳奇故事強化%@": { name: "善傳攻擊強化", fmt: "first" },
+  "超生命體特效%@": { name: "超生命體", fmt: "dual" },
+  "貓咪砲充電%@": { name: "死後貓砲充能", fmt: "tenth" },
+  "抗毒擊耐性%@": { name: "毒擊耐性", fmt: "single" },
+  "全攻擊無效%@": { name: "全攻擊無效", fmt: "first" },
+  "動慢耐性%@": { name: "緩速耐性", fmt: "single" },
+  "抗古代詛咒耐性%@": { name: "詛咒耐性", fmt: "single" },
+  "真傳奇故事強化%@": { name: "真傳攻擊強化", fmt: "first" },
+  "1次烈波反擊%@": { name: "一次烈波反擊", fmt: "single" },
+  "打倒敵人攻擊力上升%@": { name: "10 殺增攻", fmt: "single" },
+  "縮短生產時間%@": { name: "再生產時間縮短", fmt: "single" },
+  "動止耐性%@": { name: "暫停耐性", fmt: "single" },
+  "抗擊耐性%@": { name: "降攻耐性", fmt: "single" },
+  "生產成本折扣%@": { name: "生產成本減少", fmt: "single" },
+  "抗烈波耐性%@": { name: "烈波耐性", fmt: "single" }
+};
+function specialOrbText(o){
+  var d = SPECIAL_ORB_DISPLAY[o.effect || ""];
+  if(!d) return null;
+  var vals = o.value || [];
+  var vs = "";
+  if(d.fmt === "dual" && vals.length >= 2){ vs = vals[0] + "%／" + vals[1] + "%"; }
+  else if(d.fmt === "tenth" && vals.length){ vs = (vals[0] / 10).toFixed(1) + "%"; }
+  else if(vals.length){ vs = vals[0] + "%"; }
+  return (o.rank ? o.rank + "級 " : "") + d.name + (vs ? " " + vs : "");
+}
 function orbLabel(o){
+  if(!o.target){
+    var sp = specialOrbText(o);
+    if(sp) return { attr: "特殊", text: sp };
+  }
   var eff = o.effect || "";
   eff = eff.replace(/%@/g, "").replace(/:/g, " ").trim();
   return { attr: o.target || "特殊", text: (o.rank ? o.rank + "級 " : "") + (o.target ? "對" + o.target + " " : "") + eff };
@@ -883,9 +923,8 @@ function renderBase(){
   $("#ototoRows").innerHTML = rowHTML("👷","城堡開發助手","開發人力","engineers", M.engineers, M.maxEngineers || 5, false);
   $("#cannonList").innerHTML = M.cannons.length ? '<div class="rows">'+M.cannons.map(function(cn, ci){
     var cname = cn.name || ("貓咪砲 #"+cn.id);
-    return '<div class="row-item"><div class="emoji">💣</div><div class="meta"><div class="name">'+esc(cname)+'</div><div class="desc">開發度與各部件等級（以遊戲資料為準）</div></div>'+
-      '<div class="stepper"><span style="font-size:12px;color:var(--ink3);font-weight:700">開發</span><input class="num" type="number" min="0" max="30" data-cannondev="'+ci+'" value="'+cn.dev+'"></div>'+
-      cn.levels.map(function(lv, li){ var pn = (cn.parts && cn.parts[li]) ? cn.parts[li] : ("部件 "+(li+1)); return '<div class="stepper"><span style="font-size:12px;color:var(--ink3);font-weight:700">'+esc(pn)+'</span><input class="num" type="number" min="0" max="30" data-cannonlv="'+ci+":"+li+'" value="'+lv+'"></div>'; }).join("")+'</div>';
+    return '<div class="row-item"><div class="emoji">💣</div><div class="meta"><div class="name">'+esc(cname)+'</div><div class="desc">各部件等級（主砲最高 30、基座／裝飾最高 20）</div></div>'+
+      cn.levels.map(function(lv, li){ var pn = (cn.parts && cn.parts[li]) ? cn.parts[li] : ("部件 "+(li+1)); var mx = li === 0 ? 30 : 20; return '<div class="stepper"><span style="font-size:12px;color:var(--ink3);font-weight:700">'+esc(pn)+'</span><input class="num" type="number" min="0" max="'+mx+'" data-cannonlv="'+ci+":"+li+'" value="'+lv+'"></div>'; }).join("")+'</div>';
   }).join("")+'</div>' : '<p class="sub">這份存檔沒有回傳貓咪砲資料。</p>';
   $("#shrineRows").innerHTML = rowHTML("⛩️","貓咪神社供奉 XP","神社累積的供奉經驗","shrineXp", M.shrineXp, 999999999, false);
 }
@@ -1429,6 +1468,22 @@ function doConfirm(){
 /* 一鍵預覽：把開啟中的批次效果立刻顯示在畫面上（貓咪列表、主線關卡），
    真正寫入存檔仍靠 bulkOps 在上傳時由後端做。
    取消時按開啟前的快照還原該區塊，其他手動修改不受影響。 */
+/* 全貓升滿用的最高型態：以該貓自己的型態數為準；有第四型態的切到第四型態。
+   form_names 有值時用其長度（1/2/3/4 種型態 → 最高 0/1/2/3）；
+   沒有時退回存檔的已解鎖狀態。 */
+function highestForm(c){
+  if(c.form_names && c.form_names.length){
+    var n = c.form_names.length;
+    if(n >= 4) return 3;
+    if(n === 3) return 2;
+    if(n === 2) return 1;
+    return 0;
+  }
+  if(c.fourth_form === 2) return 3;
+  if(c.unlocked_forms >= 3) return 2;
+  if(c.unlocked_forms === 2) return 1;
+  return c.current_form || 0;
+}
 function applyQuickPreviews(){
   if(!M) return;
   if(bulkOps.unlock_all_cats || bulkOps.max_all_cats){
@@ -1437,12 +1492,18 @@ function applyQuickPreviews(){
     M.cats.forEach(function(c, i){
       var o = s0c[i]; if(!o) return;
       if(bulkOps.unlock_all_cats) c.unlocked = true; else c.unlocked = o.unlocked;
-      if(bulkOps.max_all_cats && typeof o.max_base === "number"){ c.level = o.max_base; c.plus = o.max_plus || 0; }
-      else if(!bulkOps.max_all_cats){ c.level = o.level; c.plus = o.plus; }
+      if(bulkOps.max_all_cats && typeof o.max_base === "number"){
+        c.level = o.max_base; c.plus = o.max_plus || 0;
+        var hf = highestForm(o);
+        c.current_form = hf;
+        if(hf === 3){ c.unlocked_forms = 3; c.fourth_form = 2; }
+        else { c.unlocked_forms = Math.max(c.unlocked_forms || 0, hf + 1); c.fourth_form = o.fourth_form || 0; }
+      }
+      else if(!bulkOps.max_all_cats){ c.level = o.level; c.plus = o.plus; c.current_form = o.current_form; c.unlocked_forms = o.unlocked_forms; c.fourth_form = o.fourth_form; }
     });
   } else if(quickSnap.cats){
     var s0c2 = JSON.parse(quickSnap.cats);
-    M.cats.forEach(function(c, i){ var o = s0c2[i]; if(!o) return; c.unlocked = o.unlocked; c.level = o.level; c.plus = o.plus; });
+    M.cats.forEach(function(c, i){ var o = s0c2[i]; if(!o) return; c.unlocked = o.unlocked; c.level = o.level; c.plus = o.plus; c.current_form = o.current_form; c.unlocked_forms = o.unlocked_forms; c.fourth_form = o.fourth_form; });
     delete quickSnap.cats;
   }
   if(bulkOps.clear_story || bulkOps.max_treasures){
@@ -1603,8 +1664,7 @@ document.addEventListener("DOMContentLoaded", function(){
       var lab = document.getElementById("modeStarVal"+mp2[0]+mp2[1]+mp2[2]);
       if(lab) lab.textContent = n + " / " + M.modes[mp2[0]].maps[+mp2[1]].stars[+mp2[2]].stages.length;
       clearTimeout(mr._t); mr._t = setTimeout(renderModes, 350); updateBar(); return; }
-    var cd = e.target.closest("[data-cannondev]"); if(cd){ M.cannons[+cd.getAttribute("data-cannondev")].dev = clamp(cd.value, 0, 30); updateBar(); return; }
-    var cl2 = e.target.closest("[data-cannonlv]"); if(cl2){ var pp = cl2.getAttribute("data-cannonlv").split(":"); M.cannons[+pp[0]].levels[+pp[1]] = clamp(cl2.value, 0, 30); updateBar(); return; }
+    var cl2 = e.target.closest("[data-cannonlv]"); if(cl2){ var pp = cl2.getAttribute("data-cannonlv").split(":"); var li2 = +pp[1]; var mx2 = li2 === 0 ? 30 : 20; M.cannons[+pp[0]].levels[li2] = clamp(cl2.value, 0, mx2); updateBar(); return; }
     if(e.target.id === "ptH" || e.target.id === "ptM" || e.target.id === "ptS"){
       var sec = clamp($("#ptH").value,0,99999)*3600 + clamp($("#ptM").value,0,59)*60 + clamp($("#ptS").value,0,59);
       M.playFrames = sec * 30; $("#ptFrames").textContent = "（存檔內記錄：" + fmt(M.playFrames) + " 幀）"; updateBar(); return; }
