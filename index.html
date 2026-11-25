@@ -162,6 +162,19 @@ a{color:var(--blue)}
 .mode-row .mname{font-weight:800;flex:1;min-width:130px;font-size:14.5px}
 .mode-row .mmeta{font-size:12.5px;color:var(--ink3);font-weight:700}
 .mode-row input[type=range]{flex:1;min-width:120px;accent-color:var(--accent)}
+.modemap{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:9px}
+.modemap .mhead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;cursor:pointer}
+.modemap .mname{font-weight:800;flex:1;min-width:120px;font-size:14.5px}
+.modemap .mmeta{font-size:12.5px;color:var(--ink3);font-weight:700}
+.modemap .mtoggle{font-size:12px;color:var(--ink3);font-weight:800}
+.startabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.startab{border:1.5px solid var(--line2);background:var(--card);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:800;color:var(--ink2);cursor:pointer}
+.startab.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.obrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 4px;border-bottom:1px solid var(--line)}
+.obrow:last-child{border-bottom:none}
+.obchip{min-width:64px;border:1.5px solid var(--line2);background:var(--card);border-radius:9px;padding:6px 8px;font-size:12.5px;font-weight:800;color:var(--ink3);cursor:pointer;text-align:center}
+.obchip.cleared{border-color:var(--green);color:var(--ink)}
+.obchip .cur{display:block;font-size:10.5px;color:var(--accent);font-weight:800}
 .tlist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:720px){.tlist{grid-template-columns:1fr}}
 .titem{display:flex;align-items:center;gap:11px;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
@@ -614,6 +627,9 @@ var sessionId = null;
 var mode = "none";     /* backend | demo | backup */
 var meta = { transfer:"", ver:"tw", inquiry:"", gvStr:"", cc:"" };
 var loaded = false;
+/* 五種模式的展開狀態：每模式記「打開的地圖」與「作用中的星」（預設全部收合，避免真傳說 1,320 格一次渲染） */
+var modeUI = {};
+function modeUIFor(key){ if(!modeUI[key]) modeUI[key] = { openMap: -1, star: 0 }; return modeUI[key]; }
 
 function emptyModel(){
   return {
@@ -625,7 +641,7 @@ function emptyModel(){
     catfruit:(function(){ var a=[]; for(var i=0;i<18;i++) a.push(0); return a; })(),
     catamins:[0,0,0],
     orbs:{}, orbInfos:[],
-    cats:[], story:[], modes:[],
+    cats:[], story:[], modes:{},
     gamaXp:0, gamaHelpers:null, engineers:0, cannons:[], shrineXp:0,
     playFrames:0, unban:false
   };
@@ -774,12 +790,54 @@ function renderStory(){
         return '<button class="stage-chip'+(s.clear>0?" cleared":"")+'" data-stage="'+ci+":"+si+'" data-t="'+s.treasure+'" title="第 '+(si+1)+' 關・'+(s.clear>0?('已通關 '+s.clear+' 次'):'未通關')+'・寶物：'+TRE_NAMES[s.treasure]+'">'+(si+1)+(s.clear>0?'<span class="cnum">✓'+s.clear+'</span>':'')+'<span class="tnum">'+TRE_NAMES[s.treasure]+'</span></button>';
       }).join("")+'</div></div>';
   }).join("") || '<p class="sub">尚未載入當版資料：這份存檔沒有回傳主線章節資料。</p>';
-  $("#modeList").innerHTML = M.modes.map(function(md, mi){
-    if(!md.available) return '<div class="mode-row"><div class="mname">'+esc(md.name)+'</div><span class="mmeta">尚未載入當版資料（後端未回傳此模式）</span></div>';
-    return '<div class="mode-row"><div class="mname">'+esc(md.name)+'</div>'+
-      '<span class="mmeta">共 '+md.total+' 關</span>'+
-      '<input type="range" min="0" max="'+md.total+'" value="'+md.cleared+'" data-moderange="'+mi+'">'+
-      '<span class="mmeta num" id="modeVal'+mi+'">已通關 '+md.cleared+' 關</span></div>';
+  renderModes();
+}
+function renderModes(){
+  var order = ["aku","outbreaks","legend_quest","uncanny","zero_legends"];
+  $("#modeList").innerHTML = order.map(function(key){
+    var md = (M.modes || {})[key];
+    if(!md || !md.available) return '<div class="mode-row"><div class="mname">'+esc(MODE_NAMES[key] || key)+'</div><span class="mmeta">尚未載入當版資料（後端未回傳此模式）</span></div>';
+    var ui = modeUIFor(key);
+    var clearedNow = 0, totalNow = 0;
+    if(key === "outbreaks"){ (md.chapters || []).forEach(function(ch){ ch.stages.forEach(function(s){ totalNow++; if(s.cleared) clearedNow++; }); }); }
+    else { (md.maps || []).forEach(function(mp){ mp.stars.forEach(function(st){ st.stages.forEach(function(s){ totalNow++; if(s.clear_times) clearedNow++; }); }); }); }
+    var head = '<div class="mode-row"><div class="mname">'+esc(md.name)+'</div>'+
+      '<span class="mmeta">共 '+totalNow+' 關・已通關 '+clearedNow+' 關</span></div>';
+    if(key === "outbreaks") return head + md.chapters.map(function(ch){
+      var clearedN = ch.stages.filter(function(s){ return s.cleared; }).length;
+      return '<div class="modemap"><div class="mhead"><div class="mname">🧟 '+esc(ch.name)+'</div>'+
+        '<span class="mmeta">'+ch.stages.length+' 個襲擊點・已清除 '+clearedN+' 個</span>'+
+        '<button class="btn btn-ghost btn-small" data-obclearall="'+ch.chapter+'">本章全部清除</button></div>'+
+        '<div>'+ch.stages.map(function(s){
+          return '<button class="obchip'+(s.cleared?" cleared":"")+'" data-outbreak="'+ch.chapter+":"+s.stage+'" title="第 '+(s.stage+1)+' 關・'+(s.cleared?"已清除":"未清除")+(s.current?"・現在正在襲擊":"")+'">第 '+(s.stage+1)+' 關'+(s.cleared?" ✓":"")+(s.current?'<span class="cur">現行中</span>':'')+'</button>';
+        }).join("")+'</div></div>';
+    }).join("") || '<p class="sub">這份存檔沒有不死篇襲擊紀錄。</p>';
+    /* 逐關模式：每張圖一個可收合區塊，只渲染打開那張圖、作用中那顆星的格子（真傳說 1,320 格不能一次全畫） */
+    return head + md.maps.map(function(mp, mi){
+      var open = ui.openMap === mi;
+      var clearedN = 0, totalN = 0;
+      mp.stars.forEach(function(st){ st.stages.forEach(function(s){ totalN++; if(s.clear_times) clearedN++; }); });
+      var h = '<div class="modemap"><div class="mhead" data-modemap="'+key+":"+mi+'"><div class="mname">'+esc(mp.name)+'</div>'+
+        '<span class="mmeta">'+totalN+' 關・已通關 '+clearedN+' 關</span><span class="mtoggle">'+(open?"▲ 收合":"▼ 展開")+'</span></div>';
+      if(!open) return h + '</div>';
+      var si = Math.min(ui.star, mp.stars.length - 1); if(si < 0) si = 0;
+      var st = mp.stars[si];
+      var starTabs = mp.stars.length > 1 ? '<div class="startabs">'+mp.stars.map(function(s2, s2i){
+        return '<button class="startab'+(s2i===si?" on":"")+'" data-modestar="'+key+":"+mi+":"+s2i+'">'+(s2i+1)+'★</button>';
+      }).join("")+'</div>' : '';
+      var clearedS = st.stages.filter(function(s){ return s.clear_times; }).length;
+      h += starTabs +
+        '<div class="chead" style="margin-top:9px"><span class="cmeta">已通關關卡數</span>'+
+        '<input type="range" min="0" max="'+st.stages.length+'" value="'+clearedS+'" data-modestarrange="'+key+":"+mi+":"+si+'">'+
+        '<span class="cmeta num" id="modeStarVal'+key+mi+si+'">'+clearedS+' / '+st.stages.length+'</span>'+
+        '<button class="btn btn-ghost btn-small" data-modeclearall="'+key+":"+mi+":"+si+'">整星通關</button>'+
+        '<button class="btn btn-ghost btn-small" data-modeclear="'+key+":"+mi+":"+si+'">全部清除</button></div>'+
+        '<div class="stage-grid">'+st.stages.map(function(s, sgi){
+          var tries = (s.tries !== undefined && s.tries !== null) ? ('・挑戰 '+s.tries+' 次') : '';
+          return '<button class="stage-chip'+(s.clear_times>0?" cleared":"")+'" data-modestage="'+key+":"+mi+":"+si+":"+sgi+'" title="第 '+(sgi+1)+' 關・'+(s.clear_times>0?('已通關 '+s.clear_times+' 次'):'未通關')+tries+'">'+(sgi+1)+(s.clear_times>0?'<span class="cnum">✓'+s.clear_times+'</span>':'')+'</button>';
+        }).join("")+'</div></div>';
+      return h;
+    }).join("") || '<p class="sub">這份存檔沒有此模式的地圖資料。</p>';
   }).join("") || '<p class="sub">尚未載入當版資料。</p>';
 }
 function renderBase(){
@@ -903,8 +961,31 @@ function modelFromBackend(save, summary){
     return { name: ch.name || "主線章節", stages: (ch.stages || []).map(function(s){
       return { clear: s.clear_times || 0, treasure: s.treasure || 0 }; }) };
   });
-  m.modes = (save.map_modes || []).map(function(md){
-    return { key: md.key, name: MODE_NAMES[md.key] || md.key, total: md.total || 0, cleared: md.cleared || 0, available: !!md.available };
+  /* 五種模式：後端回 modes（dict），照主線 story 的形狀逐關存；tries 只有舊傳說有 */
+  m.modes = {};
+  ["aku","outbreaks","legend_quest","uncanny","zero_legends"].forEach(function(key){
+    var md = (save.modes || {})[key];
+    if(!md){ m.modes[key] = { key:key, name: MODE_NAMES[key] || key, available:false, total:0, cleared:0, maps:[], chapters:[] }; return; }
+    var out = { key:key, name: MODE_NAMES[key] || key, available: !!md.available, total: md.total || 0, cleared: md.cleared || 0 };
+    if(key === "outbreaks"){
+      out.chapters = (md.chapters || []).map(function(ch){
+        return { chapter: ch.chapter, name: ch.name || ("第 " + (ch.chapter + 1) + " 章"),
+          stages: (ch.stages || []).map(function(s){ return { stage: s.stage, cleared: !!s.cleared, current: !!s.current }; }) };
+      });
+      out.maps = [];
+    } else {
+      out.maps = (md.maps || []).map(function(mp){
+        return { name: mp.name || "地圖",
+          stars: (mp.stars || []).map(function(st){
+            return { star: st.star, progress: st.progress || 0,
+              stages: (st.stages || []).map(function(s){
+                var o = { clear_times: s.clear_times || 0 };
+                if(s.tries !== undefined && s.tries !== null) o.tries = s.tries;
+                return o; }) }; }) };
+      });
+      out.chapters = [];
+    }
+    m.modes[key] = out;
   });
   if(save.limits){
     var L = save.limits;
@@ -999,7 +1080,22 @@ function loadDemo(){
     effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"S", target:null, effect: e }); oid++; });
     var chapNames = ["世界篇 第1章","世界篇 第2章","世界篇 第3章","未來篇 第1章","未來篇 第2章","未來篇 第3章","宇宙篇 第1章","宇宙篇 第2章","宇宙篇 第3章"];
     m.story = chapNames.map(function(n, ci){ var st = []; for(var i=0;i<48;i++) st.push({ clear: ci<2?1:0, treasure: ci<2 ? (i%4) : 0 }); return { name:n, stages: st }; });
-    m.modes = [ ["aku",46,12],["outbreaks",144,60],["legend_quest",49,20],["uncanny",49,8],["zero_legends",12,3] ].map(function(x){ return { key:x[0], name: MODE_NAMES[x[0]], total:x[1], cleared:x[2], available:true }; });
+    var mkStages = function(n, clearedIdx){ var st = []; for(var i=0;i<n;i++) st.push({ clear_times: clearedIdx.indexOf(i) >= 0 ? 1 : 0 }); return st; };
+    var mkStar = function(n, clearedIdx){ return { star: 0, progress: clearedIdx.length ? (Math.max.apply(null, clearedIdx) + 1) : 0, stages: mkStages(n, clearedIdx) }; };
+    m.modes = {
+      aku: { key:"aku", name: MODE_NAMES.aku, available:true, total:49, cleared:12, maps:[{ name:"魔界篇", stars:[mkStar(49, [0,1,2,3,4,5,6,7,8,9,10,11])] }], chapters:[] },
+      outbreaks: { key:"outbreaks", name: MODE_NAMES.outbreaks, available:true, total:6, cleared:3, maps:[], chapters:[
+        { chapter:0, name:"世界篇第 1 章", stages:[{stage:5,cleared:true,current:false},{stage:12,cleared:true,current:true},{stage:20,cleared:false,current:true}] },
+        { chapter:1, name:"世界篇第 2 章", stages:[{stage:3,cleared:true,current:false},{stage:8,cleared:false,current:false},{stage:15,cleared:false,current:true}] } ] },
+      legend_quest: { key:"legend_quest", name: MODE_NAMES.legend_quest, available:true, total:49, cleared:20, maps:[{ name:"傳奇尋寶記", stars:[{ star:0, progress:20, stages: mkStages(49, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]).map(function(s, i){ s.tries = s.clear_times ? 1 : 0; return s; }) }] }], chapters:[] },
+      uncanny: { key:"uncanny", name: MODE_NAMES.uncanny, available:true, total:28, cleared:8, maps:[
+        { name:"真・傳說的開始", stars:[mkStar(7, [0,1,3]), mkStar(7, [0])] },
+        { name:"滿腹秘境", stars:[mkStar(7, [0,1]), mkStar(7, [])] },
+        { name:"冒險大森林", stars:[mkStar(7, [2]), mkStar(7, [])] } ], chapters:[] },
+      zero_legends: { key:"zero_legends", name: MODE_NAMES.zero_legends, available:true, total:14, cleared:3, maps:[
+        { name:"零之領域", stars:[mkStar(7, [0,1])] },
+        { name:"時空的盡頭", stars:[mkStar(7, [3])] } ], chapters:[] }
+    };
     m.gamaXp = 450000; m.gamaHelpers = 14; m.engineers = 9; m.shrineXp = 12000; m.playFrames = 386*3600*30;
     mode = "demo"; sessionId = null;
     meta.inquiry = "範例（非真實帳號）"; meta.gvStr = "範例資料"; meta.cc = "tw";
@@ -1039,9 +1135,38 @@ function buildPatch(){
   var storyChanges = [];
   M.story.forEach(function(ch, ci){ if(countDiff(a.story[ci], ch) > 0) storyChanges.push({ chapter: ci, stages: ch.stages.map(function(s){ return { clear_times: s.clear, treasure: s.treasure }; }) }); });
   if(storyChanges.length) patch.story = storyChanges;
-  var modeChanges = {};
-  M.modes.forEach(function(md, mi){ if(md.available && a.modes[mi] && a.modes[mi].cleared !== md.cleared) modeChanges[md.key] = md.cleared; });
-  if(Object.keys(modeChanges).length) patch.map_modes = modeChanges;
+  /* 五種模式：只送被改過的（圖，星），每星送完整 clear_times 陣列；舊傳說 tries 由後端保留 */
+  var modesPatch = {};
+  ["aku","legend_quest","uncanny","zero_legends"].forEach(function(key){
+    var md = M.modes[key], omd = a.modes[key];
+    if(!md || !omd || !md.maps) return;
+    var mapChanges = [];
+    md.maps.forEach(function(mp, mi){
+      var omp = omd.maps[mi]; if(!omp) return;
+      var starChanges = [];
+      mp.stars.forEach(function(st, si){
+        var ost = omp.stars[si]; if(!ost) return;
+        if(countDiff(ost, st) > 0) starChanges.push({ star: si, stages: st.stages.map(function(s){ return { clear_times: s.clear_times }; }) });
+      });
+      if(starChanges.length) mapChanges.push({ map: mi, stars: starChanges });
+    });
+    if(mapChanges.length) modesPatch[key] = { maps: mapChanges };
+  });
+  var ob = M.modes.outbreaks, oob = a.modes.outbreaks;
+  if(ob && oob && ob.chapters){
+    var chChanges = [];
+    ob.chapters.forEach(function(ch, ci){
+      var och = oob.chapters[ci]; if(!och) return;
+      var stChanges = [];
+      ch.stages.forEach(function(s, si){
+        var os = och.stages[si];
+        if(os && os.cleared !== s.cleared) stChanges.push({ stage: s.stage, cleared: s.cleared });
+      });
+      if(stChanges.length) chChanges.push({ chapter: ch.chapter, stages: stChanges });
+    });
+    if(chChanges.length) modesPatch.outbreaks = { chapters: chChanges };
+  }
+  if(Object.keys(modesPatch).length) patch.modes = modesPatch;
   M.cats.forEach(function(c, i){
     var o = a.cats[i]; if(!o) return;
     if(countDiff(o, c) > 0) catsPayload.push({ id: c.id, unlocked: c.unlocked, level: c.level, plus: c.plus, form: c.current_form, unlocked_forms: c.unlocked_forms });
@@ -1273,6 +1398,39 @@ document.addEventListener("DOMContentLoaded", function(){
     if(gold && M){ M.story[+gold.getAttribute("data-chapgold")].stages.forEach(function(s){ s.treasure = 3; if(s.clear===0) s.clear = 1; }); renderStory(); updateBar(); return; }
     var clr = e.target.closest("[data-chapclear]");
     if(clr && M){ M.story[+clr.getAttribute("data-chapclear")].stages.forEach(function(s){ s.treasure = 0; }); renderStory(); updateBar(); return; }
+    /* ---- 五種模式 ---- */
+    var mm = e.target.closest("[data-modemap]");
+    if(mm && M){ var mp = mm.getAttribute("data-modemap").split(":"); var ui = modeUIFor(mp[0]);
+      ui.openMap = (ui.openMap === +mp[1]) ? -1 : +mp[1]; ui.star = 0; renderModes(); return; }
+    var mst = e.target.closest("[data-modestar]");
+    if(mst && M){ var sp = mst.getAttribute("data-modestar").split(":"); modeUIFor(sp[0]).star = +sp[2]; renderModes(); return; }
+    var mchip = e.target.closest("[data-modestage]");
+    if(mchip && M){ var cp2 = mchip.getAttribute("data-modestage").split(":");
+      var st2 = M.modes[cp2[0]].maps[+cp2[1]].stars[+cp2[2]].stages[+cp2[3]];
+      /* 點一下切換通關／未通關；再點回來時，若原本通關多次就恢復原本次數，否則 1 次 */
+      if(st2.clear_times > 0){ st2.clear_times = 0; }
+      else { var a0 = JSON.parse(S0); var os = a0.modes[cp2[0]].maps[+cp2[1]].stars[+cp2[2]].stages[+cp2[3]];
+        st2.clear_times = Math.max(os ? os.clear_times : 0, 1); }
+      renderModes(); updateBar(); return; }
+    var mca = e.target.closest("[data-modeclearall]");
+    if(mca && M){ var ap = mca.getAttribute("data-modeclearall").split(":");
+      var a1 = JSON.parse(S0);
+      M.modes[ap[0]].maps[+ap[1]].stars[+ap[2]].stages.forEach(function(s, si){
+        var os2 = a1.modes[ap[0]].maps[+ap[1]].stars[+ap[2]].stages[si];
+        s.clear_times = Math.max(s.clear_times, os2 ? os2.clear_times : 0, 1); });
+      renderModes(); updateBar(); toast("整星已通關"); return; }
+    var mcl = e.target.closest("[data-modeclear]");
+    if(mcl && M){ var lp = mcl.getAttribute("data-modeclear").split(":");
+      M.modes[lp[0]].maps[+lp[1]].stars[+lp[2]].stages.forEach(function(s){ s.clear_times = 0; });
+      renderModes(); updateBar(); return; }
+    var ob = e.target.closest("[data-outbreak]");
+    if(ob && M){ var op = ob.getAttribute("data-outbreak").split(":");
+      var ch = M.modes.outbreaks.chapters.filter(function(c){ return c.chapter === +op[0]; })[0];
+      var stg = ch.stages.filter(function(s){ return s.stage === +op[1]; })[0];
+      stg.cleared = !stg.cleared; renderModes(); updateBar(); return; }
+    var oba = e.target.closest("[data-obclearall]");
+    if(oba && M){ var ch2 = M.modes.outbreaks.chapters.filter(function(c){ return c.chapter === +oba.getAttribute("data-obclearall"); })[0];
+      ch2.stages.forEach(function(s){ s.cleared = true; }); renderModes(); updateBar(); toast("本章襲擊已全部清除"); return; }
     var cp = e.target.closest("[data-copy]");
     if(cp){ var txt = document.getElementById(cp.getAttribute("data-copy")).textContent;
       if(navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ toast("📋 已複製：" + txt); }); else toast(txt); return; }
@@ -1295,8 +1453,12 @@ document.addEventListener("DOMContentLoaded", function(){
       M.story[ci].stages.forEach(function(s, si){ s.clear = si < n ? Math.max(s.clear, 1) : 0; });
       $("#chapRangeVal"+ci).textContent = n + " / " + M.story[ci].stages.length;
       clearTimeout(rg._t); rg._t = setTimeout(renderStory, 350); updateBar(); return; }
-    var mr = e.target.closest("[data-moderange]");
-    if(mr){ var mi = +mr.getAttribute("data-moderange"); M.modes[mi].cleared = +mr.value; $("#modeVal"+mi).textContent = "已通關 " + mr.value + " 關"; updateBar(); return; }
+    var mr = e.target.closest("[data-modestarrange]");
+    if(mr){ var mp2 = mr.getAttribute("data-modestarrange").split(":"); var n = +mr.value;
+      M.modes[mp2[0]].maps[+mp2[1]].stars[+mp2[2]].stages.forEach(function(s, si){ s.clear_times = si < n ? Math.max(s.clear_times, 1) : 0; });
+      var lab = document.getElementById("modeStarVal"+mp2[0]+mp2[1]+mp2[2]);
+      if(lab) lab.textContent = n + " / " + M.modes[mp2[0]].maps[+mp2[1]].stars[+mp2[2]].stages.length;
+      clearTimeout(mr._t); mr._t = setTimeout(renderModes, 350); updateBar(); return; }
     var cd = e.target.closest("[data-cannondev]"); if(cd){ M.cannons[+cd.getAttribute("data-cannondev")].dev = clamp(cd.value, 0, 30); updateBar(); return; }
     var cl2 = e.target.closest("[data-cannonlv]"); if(cl2){ var pp = cl2.getAttribute("data-cannonlv").split(":"); M.cannons[+pp[0]].levels[+pp[1]] = clamp(cl2.value, 0, 30); updateBar(); return; }
     if(e.target.id === "ptH" || e.target.id === "ptM" || e.target.id === "ptS"){
