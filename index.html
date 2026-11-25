@@ -627,7 +627,7 @@ var sessionId = null;
 var mode = "none";     /* backend | demo | backup */
 var meta = { transfer:"", ver:"tw", inquiry:"", gvStr:"", cc:"" };
 var loaded = false;
-/* 五種模式的展開狀態：每模式記「打開的地圖」與「作用中的星」（預設全部收合，避免真傳說 1,320 格一次渲染） */
+/* 五種模式的展開狀態：每模式記「打開的地圖」與「作用中的星」（預設全部收合，避免真傳說 1,124 格一次渲染） */
 var modeUI = {};
 function modeUIFor(key){ if(!modeUI[key]) modeUI[key] = { open: false, openMap: -1, star: 0 }; return modeUI[key]; }
 
@@ -814,7 +814,7 @@ function renderModes(){
           return '<button class="obchip'+(s.cleared?" cleared":"")+'" data-outbreak="'+ch.chapter+":"+s.stage+'" title="第 '+(s.stage+1)+' 關・'+(s.cleared?"已清除":"未清除")+(s.current?"・現在正在襲擊":"")+'">第 '+(s.stage+1)+' 關'+(s.cleared?" ✓":"")+(s.current?'<span class="cur">現行中</span>':'')+'</button>';
         }).join("")+'</div></div>';
     }).join("") || '<p class="sub">這份存檔沒有不死篇襲擊紀錄。</p>';
-    /* 逐關模式：每張圖一個可收合區塊，只渲染打開那張圖、作用中那顆星的格子（真傳說 1,320 格不能一次全畫） */
+    /* 逐關模式：每張圖一個可收合區塊，只渲染打開那張圖、作用中那顆星的格子（真傳說 1,124 格不能一次全畫） */
     return head + md.maps.map(function(mp, mi){
       var open = ui.openMap === mi;
       var clearedN = 0, totalN = 0;
@@ -1084,19 +1084,25 @@ function loadDemo(){
     m.story = chapNames.map(function(n, ci){ var st = []; for(var i=0;i<48;i++) st.push({ clear: ci<2?1:0, treasure: ci<2 ? (i%4) : 0 }); return { name:n, stages: st }; });
     var mkStages = function(n, clearedIdx){ var st = []; for(var i=0;i<n;i++) st.push({ clear_times: clearedIdx.indexOf(i) >= 0 ? 1 : 0 }); return st; };
     var mkStar = function(n, clearedIdx){ return { star: 0, progress: clearedIdx.length ? (Math.max.apply(null, clearedIdx) + 1) : 0, stages: mkStages(n, clearedIdx) }; };
+    /* 範例五種模式：照遊戲真實結構（15.6.1 遊戲資料），每圖關數就是遊戲裡的關數。
+       真傳說 49 圖 x 4 星、每圖 1/6/8 關，合計 281/星、1124 關；零傳說 35 圖 x 1 星，
+       每圖 1/4/6/8 關，合計 205 關；舊傳說 48 關；魔界篇 49 關。範例只先通關幾關當作預覽。 */
+    var NA_NAMES = ["真・傳說的開始", "滿腹秘境", "冒險大森林", "啪唰舊海道", "旺旺灣", "深淵窺視者", "異界城市", "無法地帶的戒律", "唏哩嘩啦半島", "貓咪們的政變", "櫻桃島", "打從魂魄的歸化", "絕滅海洋城", "流放渡假村", "困惑的魔道路", "天界酒吧坊", "澡堂大戰鬥", "道地三連山", "海洋官邸", "寄生校園的惡意", "粉粿金礦", "酩酊煉鐵廠", "被揭露的神殿之秘寶", "帝國動亂", "鋼鐵健身中心", "明星諸島", "沉睡森林的故事", "實驗島", "被遺忘的墳場", "宣告開始的早晨", "幸運快樂寺院", "怪館戲院", "多樣性都市", "東南亞・巡禮", "DNA果樹園", "古代樹迷宮", "阻擋者們的城堡", "時空的彎曲", "大災難的開始", "魔海域大港", "霹靂沸騰園", "愛情死巷子", "千年獸的靈峰", "月光自由沙灘", "追逐貓咪的故鄉", "海賊王商店街", "虛虛實實的道路", "人類貓咪化計劃", "古代神木"];
+    var NA_COUNTS = [1, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 1, 6, 6, 6, 6, 6, 6, 6, 6, 8, 1];
+    var ND_NAMES = ["零之領域", "時空的盡頭", "烏龜烏龜翹盆地", "烏魯魯布島滯留記", "五告厲害新世界", "我們是海洋貓咪", "產生分歧的世界", "公合海灣的魔物", "枯萎的沉思庭院", "異界之路的另一頭", "奇妙夕谷", "點心桃花源", "隱秘的摩爾摩島", "超廉價度假勝地", "滾動式管制區", "豪華郵輪鐵打泥號", "毫不設防大魔宮", "憶當年遊園森林", "海溝新市鎮", "引誘萬物真理的大渦", "嶄新旅途的啟程", "甜味自然公園", "顛倒聖墓", "睡眠的深淵", "失憶共和國", "書籍列島", "虛榮無限公司", "驚奇幻想鄉", "肌肉帝國", "美術工房藝術坊", "繼承伴隨變異的樂園", "新天際線", "愛呷便當地區", "時尚瘋到不行", "偏愛化學實驗場"];
+    var ND_COUNTS = [1, 6, 6, 4, 8, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
+    var demoUncannyMaps = NA_NAMES.map(function(nm, mi){ return { name: nm, stars: [0,1,2,3].map(function(si){
+      var cl = (mi===0&&si===0)?[0] : (mi===1&&si===0)?[0,1] : (mi===2&&si===0)?[2] : [];
+      return mkStar(NA_COUNTS[mi], cl); }) }; });
+    var demoZeroMaps = ND_NAMES.map(function(nm, mi){ return { name: nm, stars:[mkStar(ND_COUNTS[mi], mi===0?[0] : mi===1?[3] : [])] }; });
     m.modes = {
       aku: { key:"aku", name: MODE_NAMES.aku, available:true, total:49, cleared:12, maps:[{ name:"魔界篇", stars:[mkStar(49, [0,1,2,3,4,5,6,7,8,9,10,11])] }], chapters:[] },
       outbreaks: { key:"outbreaks", name: MODE_NAMES.outbreaks, available:true, total:6, cleared:3, maps:[], chapters:[
         { chapter:0, name:"世界篇第 1 章", stages:[{stage:5,cleared:true,current:false},{stage:12,cleared:true,current:true},{stage:20,cleared:false,current:true}] },
         { chapter:1, name:"世界篇第 2 章", stages:[{stage:3,cleared:true,current:false},{stage:8,cleared:false,current:false},{stage:15,cleared:false,current:true}] } ] },
-      legend_quest: { key:"legend_quest", name: MODE_NAMES.legend_quest, available:true, total:49, cleared:20, maps:[{ name:"傳奇尋寶記", stars:[{ star:0, progress:20, stages: mkStages(49, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]).map(function(s, i){ s.tries = s.clear_times ? 1 : 0; return s; }) }] }], chapters:[] },
-      uncanny: { key:"uncanny", name: MODE_NAMES.uncanny, available:true, total:28, cleared:8, maps:[
-        { name:"真・傳說的開始", stars:[mkStar(7, [0,1,3]), mkStar(7, [0])] },
-        { name:"滿腹秘境", stars:[mkStar(7, [0,1]), mkStar(7, [])] },
-        { name:"冒險大森林", stars:[mkStar(7, [2]), mkStar(7, [])] } ], chapters:[] },
-      zero_legends: { key:"zero_legends", name: MODE_NAMES.zero_legends, available:true, total:14, cleared:3, maps:[
-        { name:"零之領域", stars:[mkStar(7, [0,1])] },
-        { name:"時空的盡頭", stars:[mkStar(7, [3])] } ], chapters:[] }
+      legend_quest: { key:"legend_quest", name: MODE_NAMES.legend_quest, available:true, total:48, cleared:20, maps:[{ name:"傳奇尋寶記", stars:[{ star:0, progress:20, stages: mkStages(48, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]).map(function(s, i){ s.tries = s.clear_times ? 1 : 0; return s; }) }] }], chapters:[] },
+      uncanny: { key:"uncanny", name: MODE_NAMES.uncanny, available:true, total:1124, cleared:4, maps: demoUncannyMaps, chapters:[] },
+      zero_legends: { key:"zero_legends", name: MODE_NAMES.zero_legends, available:true, total:205, cleared:2, maps: demoZeroMaps, chapters:[] }
     };
     m.gamaXp = 450000; m.gamaHelpers = 14; m.engineers = 9; m.shrineXp = 12000; m.playFrames = 386*3600*30;
     mode = "demo"; sessionId = null;
