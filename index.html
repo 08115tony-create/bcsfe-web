@@ -508,25 +508,37 @@ function api(path, opts){
   var base = backendBase();
   if(!base) return Promise.reject(new Error("尚未設定後端網址，後端還沒部署好，請稍後再試。"));
   return fetch(base + path, opts).then(function(r){
-    return r.json().catch(function(){ return { ok:false, error:"bad_response", hint:"後端回應不是 JSON（HTTP " + r.status + "）" }; })
-      .then(function(j){ j._http = r.status; return j; });
+    return r.json().catch(function(){
+      /* 後端沒回 JSON：通常是雲端後端休眠喚醒中，代理回了 502/503 的 HTML 頁面。
+         這種情況視為「連不到後端」，讓上傳的重試機制接手，不要當成一般錯誤。 */
+      throw new Error("連不到後端：請確認後端有啟動、網址正確；雲端免費方案休眠時要等 30–60 秒喚醒後再試。（HTTP " + r.status + "）");
+    }).then(function(j){ j._http = r.status; return j; });
   }).catch(function(e){
-    if(e && e.message && e.message.indexOf("尚未設定") === 0) throw e;
+    if(e && e.message && (e.message.indexOf("尚未設定") === 0 || e.message.indexOf("連不到後端") === 0)) throw e;
     throw new Error("連不到後端：請確認後端有啟動、網址正確；雲端免費方案休眠時要等 30–60 秒喚醒後再試。");
   });
 }
-/* 上傳／送出時若遇到「連不到後端」（例如後端正在休眠喚醒），等 10 秒自動再試一次。
+/* 上傳／送出時若遇到「連不到後端」（例如後端正在休眠喚醒），自動再試幾次。
+   第一次等 10 秒，第二次等 30 秒（喚醒約需 1 分鐘）。
    edit 與 upload 都是冪等的：重送同一份修改不會重複加東西；
    upload 重送只會產生一組新的號碼，舊的作廢，所以安全。
    解封（unban）不是冪等的，不走這裡。 */
-function apiRetry(path, opts){
-  return api(path, opts).catch(function(e){
-    if(e && e.message && e.message.indexOf("連不到後端") === 0){
-      $("#upSub").textContent = "後端沒回應（可能正在休眠喚醒），10 秒後自動再試一次…";
-      return new Promise(function(res){ setTimeout(res, 10000); }).then(function(){ return api(path, opts); });
-    }
-    throw e;
-  });
+function apiRetry(path, opts, retries){
+  var left = (typeof retries === "number") ? retries : 1;
+  var tries = 0;
+  var attempt = function(){
+    return api(path, opts).catch(function(e){
+      if(tries < left && e && e.message && e.message.indexOf("連不到後端") === 0){
+        tries++;
+        var wait = (tries === 1) ? 10000 : 30000;
+        upPhase = "retry";
+        $("#upSub").textContent = "後端沒回應（可能正在休眠喚醒），" + (wait / 1000) + " 秒後自動再試一次…";
+        return new Promise(function(res){ setTimeout(res, wait); }).then(attempt);
+      }
+      throw e;
+    });
+  };
+  return attempt();
 }
 /* 免費後端 15 分鐘沒人連就會休眠，休眠後連線失效。
    只要編輯器頁面開著、且處於後端連線狀態，每 10 分鐘輕敲一次 /api/health，
@@ -591,6 +603,7 @@ var MODE_NAMES = { aku:"魔界篇", outbreaks:"不死篇（殭屍襲擊）", leg
 var M = null;          /* 目前模型 */
 var S0 = null;         /* 載入時快照（JSON 字串） */
 var bulkOps = {};      /* 一鍵批次（上傳時送出） */
+var quickSnap = {};    /* 一鍵預覽開啟前，貓咪／主線區塊的原始狀態（取消時還原） */
 var sessionId = null;
 var mode = "none";     /* backend | demo | backup */
 var meta = { transfer:"", ver:"tw", inquiry:"", gvStr:"", cc:"" };
@@ -827,6 +840,7 @@ function updateBar(){
 function finishLoad(label){
   S0 = JSON.stringify(M);
   bulkOps = {};
+  quickSnap = {};
   loaded = true;
   if(mode === "backend" && sessionId) startKeepAlive();
   $("#accountBar").classList.add("show");
@@ -1029,6 +1043,16 @@ function buildPatch(){
   });
   return { patch: patch, cats: catsPayload, bulk: bulk };
 }
+/* 上傳等待時顯示經過秒數，讓使用者知道還在跑、不是卡住 */
+var upTimer = null, upSecs = 0, upPhase = "";
+function upTick(){
+  upSecs++;
+  var el = $("#upSub"); if(!el) return;
+  if(upPhase === "edit") el.textContent = "正在把修改送到後端…（已等 " + upSecs + " 秒，雲端後端剛喚醒時這步可能要等約 1 分鐘）";
+  else if(upPhase === "upload") el.textContent = "正在上傳到遊戲伺服器…（已等 " + upSecs + " 秒，請不要關掉頁面）";
+  else if(upPhase === "retry") el.textContent = "後端沒回應，自動重試中…（已等 " + upSecs + " 秒）";
+}
+function upStop(){ if(upTimer){ clearInterval(upTimer); upTimer = null; } }
 function doConfirm(){
   if(!loaded || dirtyCount() === 0) return;
   var ov = $("#overlay"); ov.classList.add("show");
@@ -1045,8 +1069,9 @@ function doConfirm(){
   }
   $("#upTitle").textContent = "上傳中…";
   $("#upSub").textContent = "正在透過後端把修改送出，請稍等。";
+  upSecs = 0; upPhase = "edit"; upTimer = setInterval(upTick, 1000);
   var payload = buildPatch();
-  apiRetry("/api/save/" + sessionId + "/edit", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) })
+  apiRetry("/api/save/" + sessionId + "/edit", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }, 1)
   .then(function(j){
     if(!j.ok) throw new Error(errText(j));
     steps[0].classList.add("done"); steps[0].querySelector(".dot").textContent = "✓";
@@ -1056,10 +1081,12 @@ function doConfirm(){
   })
   .then(function(uj){
     if(uj && !uj.ok) throw new Error(errText(uj));
-    return apiRetry("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+    upPhase = "upload";
+    return apiRetry("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" }, 2);
   })
   .then(function(j){
     if(!j.ok) throw new Error(errText(j));
+    upStop();
     steps[1].classList.add("done"); steps[1].querySelector(".dot").textContent = "✓";
     steps[2].classList.add("done"); steps[2].querySelector(".dot").textContent = "✓";
     $("#newTransfer").textContent = j.transfer_code;
@@ -1068,11 +1095,12 @@ function doConfirm(){
     $("#uploadingView").style.display = "none";
     $("#resultView").style.display = "block";
     meta.transfer = j.transfer_code;
-    S0 = JSON.stringify(M); bulkOps = {};
+    S0 = JSON.stringify(M); bulkOps = {}; quickSnap = {};
     $("#step3").classList.add("done");
     updateBar();
   })
   .catch(function(e){
+    upStop();
     $("#upTitle").textContent = "上傳沒有完成";
     $("#upSub").textContent = "沒有拿到新號碼，你的修改還留在這一頁，可以修正後再試一次。";
     var msg = e.message;
@@ -1082,6 +1110,44 @@ function doConfirm(){
     var er = $("#upErr"); er.textContent = "⚠️ " + msg; er.classList.add("show");
     $("#btnUpClose").style.display = "block";
   });
+}
+
+/* 一鍵預覽：把開啟中的批次效果立刻顯示在畫面上（貓咪列表、主線關卡），
+   真正寫入存檔仍靠 bulkOps 在上傳時由後端做。
+   取消時按開啟前的快照還原該區塊，其他手動修改不受影響。 */
+function applyQuickPreviews(){
+  if(!M) return;
+  if(bulkOps.unlock_all_cats || bulkOps.max_all_cats){
+    if(!quickSnap.cats) quickSnap.cats = JSON.stringify(M.cats);
+    var s0c = JSON.parse(quickSnap.cats);
+    M.cats.forEach(function(c, i){
+      var o = s0c[i]; if(!o) return;
+      if(bulkOps.unlock_all_cats) c.unlocked = true; else c.unlocked = o.unlocked;
+      if(bulkOps.max_all_cats && typeof o.max_base === "number"){ c.level = o.max_base; c.plus = o.max_plus || 0; }
+      else if(!bulkOps.max_all_cats){ c.level = o.level; c.plus = o.plus; }
+    });
+  } else if(quickSnap.cats){
+    var s0c2 = JSON.parse(quickSnap.cats);
+    M.cats.forEach(function(c, i){ var o = s0c2[i]; if(!o) return; c.unlocked = o.unlocked; c.level = o.level; c.plus = o.plus; });
+    delete quickSnap.cats;
+  }
+  if(bulkOps.clear_story || bulkOps.max_treasures){
+    if(!quickSnap.story) quickSnap.story = JSON.stringify(M.story);
+    var s0s = JSON.parse(quickSnap.story);
+    M.story.forEach(function(ch, ci){
+      var oc = s0s[ci]; if(!oc) return;
+      ch.stages.forEach(function(s, si){
+        var os = oc.stages[si]; if(!os) return;
+        if(bulkOps.clear_story) s.clear = Math.max(s.clear, 1); else s.clear = os.clear;
+        if(bulkOps.max_treasures){ s.treasure = 3; if(s.clear === 0) s.clear = 1; } else s.treasure = os.treasure;
+      });
+    });
+  } else if(quickSnap.story){
+    var s0s2 = JSON.parse(quickSnap.story);
+    M.story.forEach(function(ch, ci){ var oc = s0s2[ci]; if(!oc) return;
+      ch.stages.forEach(function(s, si){ var os = oc.stages[si]; if(!os) return; s.clear = os.clear; s.treasure = os.treasure; }); });
+    delete quickSnap.story;
+  }
 }
 
 /* ================= 事件 ================= */
@@ -1215,17 +1281,17 @@ document.addEventListener("DOMContentLoaded", function(){
     if(q === "tickets"){ ["normal_tickets","rare_tickets","platinum_tickets","legend_tickets","platinum_shards"].forEach(function(k){ M.scalars[k] = MAXV[k]; }); toast("🎟️ 券券已補滿"); }
     if(q === "items"){ M.battleItems.forEach(function(it){ it.amount = MAXV.battle_items; }); M.catseyes = M.catseyes.map(function(){ return MAXV.catseyes; }); M.baseMaterials = M.baseMaterials.map(function(){ return MAXV.base_materials; }); toast("🎒 道具與素材已全滿"); }
     if(q === "fruits"){ M.catfruit = M.catfruit.map(function(){ return MAXV.catfruit; }); M.catamins = M.catamins.map(function(){ return MAXV.catamins; }); toast("🍇 貓薄荷與貓力達已全滿"); }
-    if(q === "unlock_cats"){ bulkOps.unlock_all_cats = !bulkOps.unlock_all_cats; b.classList.toggle("on", !!bulkOps.unlock_all_cats); if(mode !== "backend" && bulkOps.unlock_all_cats) M.cats.forEach(function(c){ c.unlocked = true; }); toast(bulkOps.unlock_all_cats ? "已加入批次：全貓解鎖" : "已取消批次：全貓解鎖"); }
-    if(q === "max_cats"){ bulkOps.max_all_cats = !bulkOps.max_all_cats; b.classList.toggle("on", !!bulkOps.max_all_cats); toast(bulkOps.max_all_cats ? "已加入批次：全貓升滿" : "已取消批次：全貓升滿"); }
-    if(q === "clear_story"){ bulkOps.clear_story = !bulkOps.clear_story; b.classList.toggle("on", !!bulkOps.clear_story); if(mode !== "backend" && bulkOps.clear_story) M.story.forEach(function(ch){ ch.stages.forEach(function(s){ s.clear = Math.max(s.clear,1); }); }); toast(bulkOps.clear_story ? "已加入批次：主線全通關" : "已取消批次：主線全通關"); }
-    if(q === "max_treasures"){ bulkOps.max_treasures = !bulkOps.max_treasures; b.classList.toggle("on", !!bulkOps.max_treasures); if(mode !== "backend" && bulkOps.max_treasures) M.story.forEach(function(ch){ ch.stages.forEach(function(s){ s.treasure = 3; }); }); toast(bulkOps.max_treasures ? "已加入批次：寶物全金" : "已取消批次：寶物全金"); }
+    if(q === "unlock_cats"){ bulkOps.unlock_all_cats = !bulkOps.unlock_all_cats; b.classList.toggle("on", !!bulkOps.unlock_all_cats); applyQuickPreviews(); toast(bulkOps.unlock_all_cats ? "已加入批次：全貓解鎖" : "已取消批次：全貓解鎖"); }
+    if(q === "max_cats"){ bulkOps.max_all_cats = !bulkOps.max_all_cats; b.classList.toggle("on", !!bulkOps.max_all_cats); applyQuickPreviews(); toast(bulkOps.max_all_cats ? "已加入批次：全貓升滿" : "已取消批次：全貓升滿"); }
+    if(q === "clear_story"){ bulkOps.clear_story = !bulkOps.clear_story; b.classList.toggle("on", !!bulkOps.clear_story); applyQuickPreviews(); toast(bulkOps.clear_story ? "已加入批次：主線全通關" : "已取消批次：主線全通關"); }
+    if(q === "max_treasures"){ bulkOps.max_treasures = !bulkOps.max_treasures; b.classList.toggle("on", !!bulkOps.max_treasures); applyQuickPreviews(); toast(bulkOps.max_treasures ? "已加入批次：寶物全金" : "已取消批次：寶物全金"); }
     renderAll();
   });
 
   /* 還原 / 備份 */
   $("#btnReset").addEventListener("click", function(){
     if(!S0) return;
-    M = JSON.parse(S0); bulkOps = {};
+    M = JSON.parse(S0); bulkOps = {}; quickSnap = {};
     $$("#quickBar [data-quick]").forEach(function(b){ b.classList.remove("on"); });
     renderAll(); toast("↩️ 已還原成載入時的存檔");
   });
@@ -1256,6 +1322,7 @@ document.addEventListener("DOMContentLoaded", function(){
           }
           M = Object.assign(emptyModel(), d.model);
           bulkOps = {};
+          quickSnap = {};
           $$("#quickBar [data-quick]").forEach(function(b){ b.classList.remove("on"); });
           renderAll(); updateBar();
           toast("✅ 已套用備份的修改，請檢查後再按確認並上傳");
