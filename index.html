@@ -323,7 +323,7 @@ footer a{color:var(--ink2)}
     <nav class="tabs" id="tabs">
       <button data-tab="res" class="on">💰 資源・券券</button>
       <button data-tab="items">🎒 道具・素材</button>
-      <button data-tab="fruit">🍇 貓薄荷・貓力達</button>
+      <button data-tab="fruit">🍇 貓薄荷・喵力達</button>
       <button data-tab="orbs">🔮 本能玉</button>
       <button data-tab="cats">🐱 貓咪</button>
       <button data-tab="progress">🏰 進度・寶物</button>
@@ -352,9 +352,9 @@ footer a{color:var(--ink2)}
     </div>
 
     <div class="card panel" data-panel="fruit">
-      <h3>貓薄荷（9 種顏色 × 種子／果實）</h3>
+      <h3>貓薄荷（18 種，順序照遊戲資料）</h3>
       <div class="rows" id="catfruits"></div>
-      <h3>貓力達（加碼多多探險用）</h3>
+      <h3>喵力達（加碼多多探險用）</h3>
       <div class="rows" id="catamins"></div>
     </div>
 
@@ -590,11 +590,16 @@ var SEEDS = [
   ["normal_gatya_seed","🎲","普通轉蛋種子","目前普通轉蛋的種子位置"],
   ["event_gatya_seed","🎲","活動轉蛋種子","目前活動轉蛋的種子位置"]
 ];
-var BATTLE_ITEMS = [["⏩","加速"],["📡","寶物雷達"],["💰","金錢貓"],["🖥️","貓電腦"],["💼","工作貓"],["🎯","狙擊貓"]];
-var CATSEYES = [["👁️","貓眼石・普通"],["👁️","貓眼石・EX"],["👁️","貓眼石・稀有"],["👁️","貓眼石・超激稀有"],["👁️","貓眼石・傳說稀有"],["🌑","暗黑貓眼石"]];
-var BASE_MATS = [["🧱","磚塊"],["🪶","羽毛"],["⬛","煤炭"],["⚙️","齒輪"],["🥇","黃金"],["☄️","隕石"],["🦴","獸骨"],["🐚","菊石"],["🌌","宇宙石"]];
-/* 貓薄荷：9 種顏色，順序照後端陣列（紅、綠、藍、黃、紫、金、惡魔、彩虹、古代），每種 種子→果實 */
-var FRUIT_COLORS = [["🔴","紅色"],["🟢","綠色"],["🔵","藍色"],["🟡","黃色"],["🟣","紫色"],["🌕","金色"],["😈","惡魔"],["🌈","彩虹"],["🏺","古代"]];
+var BATTLE_ITEMS = [["⏩","加速"],["📡","寶物雷達"],["💰","土豪貓"],["🖥️","貓型電腦"],["💼","洞悉先機"],["🎯","狙擊手"]];
+var CATSEYES = [["👁️","貓眼石【EX】"],["👁️","貓眼石【稀有】"],["👁️","貓眼石【激稀有】"],["👁️","貓眼石【超激稀有】"],["👁️","貓眼石【傳說】"],["🌑","貓眼石【闇】"]];
+/* 城堡素材：順序照遊戲 GatyaItemBuy category 7，共 16 項（8 種基本＋8 種 Z）。
+   之前只寫 9 項且順序錯：第 9 項不是宇宙石，是紅磚Z；Z 素材完全沒顯示。 */
+var BASE_MATS = [["🧱","紅磚"],["🪶","羽毛"],["⬛","備長炭"],["⚙️","鋼製齒輪"],["🥇","黃金"],["🌌","宇宙石"],["🦴","神秘骨頭"],["🐚","菊石"],["🧱","紅磚Z"],["🪶","羽毛Z"],["⬛","備長炭Z"],["⚙️","鋼製齒輪Z"],["🥇","黃金Z"],["🌌","宇宙石Z"],["🦴","神秘骨頭Z"],["🐚","菊石Z"]];
+/* 貓薄荷：順序照遊戲 Matatabi.tsv（BCSFE 的 Matatabi.get_names()），共 18 項。
+   之前寫的「9 色×種子→果實」是錯的：第 17 項不是古代果實，是黃金貓薄荷種子，
+   改古代果實會改到黃金種子。正確順序：紫／紅／藍／綠／黃種子、紫／紅／藍／綠／黃果實、
+   彩虹果實、古代種子、古代果實、彩虹種子、黃金果實、惡種子、惡果實、黃金種子。 */
+var FRUIT_LIST = [["🟣","紫色貓薄荷種子"],["🔴","紅色貓薄荷種子"],["🔵","藍色貓薄荷種子"],["🟢","綠色貓薄荷種子"],["🟡","黃色貓薄荷種子"],["🟣","紫色貓薄荷"],["🔴","紅色貓薄荷"],["🔵","藍色貓薄荷"],["🟢","綠色貓薄荷"],["🟡","黃色貓薄荷"],["🌈","彩虹貓薄荷"],["🏺","古代貓薄荷種子"],["🏺","古代貓薄荷"],["🌈","彩虹貓薄荷種子"],["🌕","黃金貓薄荷"],["😈","惡貓薄荷種子"],["😈","惡貓薄荷"],["🌕","黃金貓薄荷種子"]];
 var FORM_NAMES = ["第一型態","第二型態","真型態","第四型態"];
 var RARITY_NAMES = ["基本","EX","稀有","激稀有","超激稀有","傳說稀有"];
 var TRE_NAMES = ["無","銅","銀","金"];
@@ -616,7 +621,7 @@ function emptyModel(){
     seeds:{ rare_gatya_seed:0, normal_gatya_seed:0, event_gatya_seed:0 },
     battleItems: BATTLE_ITEMS.map(function(){ return { amount:0, endlessMode:"off", endlessMins:180 }; }),
     catseyes:[0,0,0,0,0,0],
-    baseMaterials:[0,0,0,0,0,0,0,0,0],
+    baseMaterials:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     catfruit:(function(){ var a=[]; for(var i=0;i<18;i++) a.push(0); return a; })(),
     catamins:[0,0,0],
     orbs:{}, orbInfos:[],
@@ -683,13 +688,12 @@ function renderItems(){
 }
 function renderFruit(){
   var html = "";
-  FRUIT_COLORS.forEach(function(c, ci){
-    html += rowHTML(c[0], c[1]+"貓薄荷種子", "貓薄荷種子", "catfruit."+(ci*2), M.catfruit[ci*2]||0, MAXV.catfruit, false);
-    html += rowHTML(c[0], c[1]+"貓薄荷果實", "貓薄荷果實", "catfruit."+(ci*2+1), M.catfruit[ci*2+1]||0, MAXV.catfruit, false);
+  FRUIT_LIST.forEach(function(c, i){
+    html += rowHTML(c[0], c[1], "", "catfruit."+i, M.catfruit[i]||0, MAXV.catfruit, false);
   });
   $("#catfruits").innerHTML = html;
   var names = ["A","B","C","D","E"];
-  $("#catamins").innerHTML = M.catamins.map(function(v, i){ return rowHTML("🧪", "貓力達 "+(names[i]||("第 "+(i+1)+" 種")), "加碼多多探險加速", "catamins."+i, v, MAXV.catamins, false); }).join("");
+  $("#catamins").innerHTML = M.catamins.map(function(v, i){ return rowHTML("🧪", "喵力達 "+(names[i]||("第 "+(i+1)+" 種")), "加碼多多探險加速", "catamins."+i, v, MAXV.catamins, false); }).join("");
 }
 function orbLabel(o){
   var eff = o.effect || "";
@@ -868,7 +872,7 @@ function modelFromBackend(save, summary){
     var en = it.endless || {};
     if(en.active){ m.battleItems[i].endlessMode = (en.end === null || !isFinite(en.end)) ? "inf" : "mins"; m.battleItems[i].endlessMins = 180; }
   });
-  if(Array.isArray(v.base_materials)) v.base_materials.slice(0,9).forEach(function(x,i){ m.baseMaterials[i] = x; });
+  if(Array.isArray(v.base_materials)) v.base_materials.slice(0,16).forEach(function(x,i){ m.baseMaterials[i] = x; });
   if(Array.isArray(v.talent_orbs)) v.talent_orbs.forEach(function(o){ m.orbs[o.id] = o.value; });
   if(Array.isArray(save.orb_infos)) m.orbInfos = save.orb_infos;
   if(typeof v.gamatoto_xp === "number") m.gamaXp = v.gamatoto_xp;
@@ -973,7 +977,7 @@ function loadDemo(){
   m.catfruit = m.catfruit.map(function(_, i){ return (i*7)%40; });
   m.catamins = [42,35,21];
   m.catseyes = [210,96,74,38,9,4];
-  m.baseMaterials = [180,150,132,118,64,47,39,26,8];
+  m.baseMaterials = [180,150,132,118,64,47,39,26,12,10,8,6,5,4,3,2];
   m.battleItems.forEach(function(it, i){ it.amount = [120,85,64,52,71,43][i]; });
   var finishDemo = function(catalogCats){
     if(catalogCats && catalogCats.length){
@@ -1342,7 +1346,7 @@ document.addEventListener("DOMContentLoaded", function(){
     if(q === "resources"){ ["catfood","xp","np","leadership"].forEach(function(k){ M.scalars[k] = MAXV[k]; }); toast("💰 資源已全滿"); }
     if(q === "tickets"){ ["normal_tickets","rare_tickets","platinum_tickets","legend_tickets","platinum_shards"].forEach(function(k){ M.scalars[k] = MAXV[k]; }); toast("🎟️ 券券已補滿"); }
     if(q === "items"){ M.battleItems.forEach(function(it){ it.amount = MAXV.battle_items; }); M.catseyes = M.catseyes.map(function(){ return MAXV.catseyes; }); M.baseMaterials = M.baseMaterials.map(function(){ return MAXV.base_materials; }); toast("🎒 道具與素材已全滿"); }
-    if(q === "fruits"){ M.catfruit = M.catfruit.map(function(){ return MAXV.catfruit; }); M.catamins = M.catamins.map(function(){ return MAXV.catamins; }); toast("🍇 貓薄荷與貓力達已全滿"); }
+    if(q === "fruits"){ M.catfruit = M.catfruit.map(function(){ return MAXV.catfruit; }); M.catamins = M.catamins.map(function(){ return MAXV.catamins; }); toast("🍇 貓薄荷與喵力達已全滿"); }
     if(q === "unlock_cats"){ bulkOps.unlock_all_cats = !bulkOps.unlock_all_cats; b.classList.toggle("on", !!bulkOps.unlock_all_cats); applyQuickPreviews(); toast(bulkOps.unlock_all_cats ? "已加入批次：全貓解鎖" : "已取消批次：全貓解鎖"); }
     if(q === "max_cats"){ bulkOps.max_all_cats = !bulkOps.max_all_cats; b.classList.toggle("on", !!bulkOps.max_all_cats); applyQuickPreviews(); toast(bulkOps.max_all_cats ? "已加入批次：全貓升滿" : "已取消批次：全貓升滿"); }
     if(q === "clear_story"){ bulkOps.clear_story = !bulkOps.clear_story; b.classList.toggle("on", !!bulkOps.clear_story); applyQuickPreviews(); toast(bulkOps.clear_story ? "已加入批次：主線全通關" : "已取消批次：主線全通關"); }
