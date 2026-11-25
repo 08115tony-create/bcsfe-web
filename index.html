@@ -163,6 +163,8 @@ a{color:var(--blue)}
 .mode-row .mmeta{font-size:12.5px;color:var(--ink3);font-weight:700}
 .mode-row input[type=range]{flex:1;min-width:120px;accent-color:var(--accent)}
 .modemap{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:9px}
+.modemap.locked{opacity:.62;background:var(--card);border-style:dashed}
+.modemap .locktag{font-size:11.5px;font-weight:800;color:var(--ink3);border:1.5px solid var(--line2);border-radius:20px;padding:2px 8px;white-space:nowrap}
 .modemap .mhead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;cursor:pointer}
 .modemap .mname{font-weight:800;flex:1;min-width:120px;font-size:14.5px}
 .modemap .mmeta{font-size:12.5px;color:var(--ink3);font-weight:700}
@@ -174,6 +176,7 @@ a{color:var(--blue)}
 .obrow:last-child{border-bottom:none}
 .obchip{min-width:64px;border:1.5px solid var(--line2);background:var(--card);border-radius:9px;padding:6px 8px;font-size:12.5px;font-weight:800;color:var(--ink3);cursor:pointer;text-align:center}
 .obchip.cleared{border-color:var(--green);color:var(--ink)}
+.obchip.unoccurred{opacity:.45;cursor:not-allowed;border-style:dashed}
 .obchip .cur{display:block;font-size:10.5px;color:var(--accent);font-weight:800}
 .tlist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:720px){.tlist{grid-template-columns:1fr}}
@@ -399,7 +402,7 @@ footer a{color:var(--ink2)}
       <p class="sub">每一章的關卡數以當版遊戲資料為準。用滑桿設定已通關關卡數；每一關的寶物格點一下會依序切換：無 → 銅 → 銀 → 金。</p>
       <div id="storyList"></div>
       <h3>其他模式進度</h3>
-      <p class="sub">魔界、不死（殭屍襲擊）、舊傳說（傳奇任務）、真傳說、零傳說各自獨立計算，關卡總數以當版遊戲資料為準。</p>
+      <p class="sub">魔界、不死（殭屍襲擊）、舊傳說、真傳說、零傳說、傳奇任務各自獨立計算，關卡總數以當版遊戲資料為準。</p>
       <div id="modeList"></div>
     </div>
 
@@ -616,7 +619,7 @@ var FRUIT_LIST = [["🟣","紫色貓薄荷種子"],["🔴","紅色貓薄荷種�
 var FORM_NAMES = ["第一型態","第二型態","真型態","第四型態"];
 var RARITY_NAMES = ["基本","EX","稀有","激稀有","超激稀有","傳說稀有"];
 var TRE_NAMES = ["無","銅","銀","金"];
-var MODE_NAMES = { aku:"魔界篇", outbreaks:"不死篇（殭屍襲擊）", legend_quest:"舊傳說（傳奇任務）", uncanny:"真傳說", zero_legends:"零傳說" };
+var MODE_NAMES = { aku:"魔界篇", outbreaks:"不死篇（殭屍襲擊）", stories_of_legend:"舊傳說", uncanny:"真傳說", zero_legends:"零傳說", legend_quest:"傳奇任務" };
 
 /* ================= state ================= */
 var M = null;          /* 目前模型 */
@@ -627,7 +630,7 @@ var sessionId = null;
 var mode = "none";     /* backend | demo | backup */
 var meta = { transfer:"", ver:"tw", inquiry:"", gvStr:"", cc:"" };
 var loaded = false;
-/* 五種模式的展開狀態：每模式記「打開的地圖」與「作用中的星」（預設全部收合，避免真傳說 1,124 格一次渲染） */
+/* 六種模式的展開狀態：每模式記「打開的地圖」與「作用中的星」（預設全部收合，避免真傳說 1,124 格一次渲染） */
 var modeUI = {};
 function modeUIFor(key){ if(!modeUI[key]) modeUI[key] = { open: false, openMap: -1, star: 0 }; return modeUI[key]; }
 
@@ -793,7 +796,7 @@ function renderStory(){
   renderModes();
 }
 function renderModes(){
-  var order = ["aku","outbreaks","legend_quest","uncanny","zero_legends"];
+  var order = ["aku","outbreaks","stories_of_legend","uncanny","zero_legends","legend_quest"];
   $("#modeList").innerHTML = order.map(function(key){
     var md = (M.modes || {})[key];
     if(!md || !md.available) return '<div class="mode-row"><div class="mname">'+esc(MODE_NAMES[key] || key)+'</div><span class="mmeta">尚未載入當版資料（後端未回傳此模式）</span></div>';
@@ -801,7 +804,7 @@ function renderModes(){
     var clearedNow = 0, totalNow = 0;
     if(key === "outbreaks"){ (md.chapters || []).forEach(function(ch){ ch.stages.forEach(function(s){ totalNow++; if(s.cleared) clearedNow++; }); }); }
     else { (md.maps || []).forEach(function(mp){ mp.stars.forEach(function(st){ st.stages.forEach(function(s){ totalNow++; if(s.clear_times) clearedNow++; }); }); }); }
-    /* 模式本身也是可收合的選項：預設只顯示五個模式名，點開才出現裡面的大關／襲擊點 */
+    /* 模式本身也是可收合的選項：預設只顯示六個模式名，點開才出現裡面的大關／襲擊點 */
     var head = '<div class="mode-row" data-modetoggle="'+key+'" style="cursor:pointer"><div class="mname">'+esc(md.name)+'</div>'+
       '<span class="mmeta">共 '+totalNow+' 關・已通關 '+clearedNow+' 關</span><span class="mtoggle">'+(ui.open?"▲ 收合":"▼ 點開")+'</span></div>';
     if(!ui.open) return head;
@@ -811,7 +814,8 @@ function renderModes(){
         '<span class="mmeta">'+ch.stages.length+' 個襲擊點・已清除 '+clearedN+' 個</span>'+
         '<button class="btn btn-ghost btn-small" data-obclearall="'+ch.chapter+'">本章全部清除</button></div>'+
         '<div>'+ch.stages.map(function(s){
-          return '<button class="obchip'+(s.cleared?" cleared":"")+'" data-outbreak="'+ch.chapter+":"+s.stage+'" title="第 '+(s.stage+1)+' 關・'+(s.cleared?"已清除":"未清除")+(s.current?"・現在正在襲擊":"")+'">第 '+(s.stage+1)+' 關'+(s.cleared?" ✓":"")+(s.current?'<span class="cur">現行中</span>':'')+'</button>';
+          var occ = (s.occurred !== undefined) ? s.occurred : (s.cleared || s.current);
+          return '<button class="obchip'+(s.cleared?" cleared":"")+(occ?"":" unoccurred")+'" data-outbreak="'+ch.chapter+":"+s.stage+'" title="第 '+(s.stage+1)+' 關・'+(s.cleared?"已清除":(occ?"未清除":"尚未發生，無法修改"))+(s.current?"・現在正在襲擊":"")+'">第 '+(s.stage+1)+' 關'+(s.cleared?" ✓":"")+(s.current?'<span class="cur">現行中</span>':'')+(occ?"":'<span class="cur" style="color:var(--ink3)">未發生</span>')+'</button>';
         }).join("")+'</div></div>';
     }).join("") || '<p class="sub">這份存檔沒有不死篇襲擊紀錄。</p>';
     /* 逐關模式：每張圖一個可收合區塊，只渲染打開那張圖、作用中那顆星的格子（真傳說 1,124 格不能一次全畫） */
@@ -819,7 +823,8 @@ function renderModes(){
       var open = ui.openMap === mi;
       var clearedN = 0, totalN = 0;
       mp.stars.forEach(function(st){ st.stages.forEach(function(s){ totalN++; if(s.clear_times) clearedN++; }); });
-      var h = '<div class="modemap"><div class="mhead" data-modemap="'+key+":"+mi+'"><div class="mname">'+esc(mp.name)+'</div>'+
+      var lockTag = mp.locked ? '<span class="locktag">🔒 未解鎖</span>' : '';
+      var h = '<div class="modemap'+(mp.locked?" locked":"")+'"><div class="mhead" data-modemap="'+key+":"+mi+'"><div class="mname">'+esc(mp.name)+'</div>'+lockTag+
         '<span class="mmeta">'+totalN+' 關・已通關 '+clearedN+' 關</span><span class="mtoggle">'+(open?"▲ 收合":"▼ 展開")+'</span></div>';
       if(!open) return h + '</div>';
       var si = Math.min(ui.star, mp.stars.length - 1); if(si < 0) si = 0;
@@ -963,21 +968,21 @@ function modelFromBackend(save, summary){
     return { name: ch.name || "主線章節", stages: (ch.stages || []).map(function(s){
       return { clear: s.clear_times || 0, treasure: s.treasure || 0 }; }) };
   });
-  /* 五種模式：後端回 modes（dict），照主線 story 的形狀逐關存；tries 只有舊傳說有 */
+  /* 六種模式：後端回 modes（dict），照主線 story 的形狀逐關存；tries 只有傳奇任務有 */
   m.modes = {};
-  ["aku","outbreaks","legend_quest","uncanny","zero_legends"].forEach(function(key){
+  ["aku","outbreaks","stories_of_legend","legend_quest","uncanny","zero_legends"].forEach(function(key){
     var md = (save.modes || {})[key];
     if(!md){ m.modes[key] = { key:key, name: MODE_NAMES[key] || key, available:false, total:0, cleared:0, maps:[], chapters:[] }; return; }
     var out = { key:key, name: MODE_NAMES[key] || key, available: !!md.available, total: md.total || 0, cleared: md.cleared || 0 };
     if(key === "outbreaks"){
       out.chapters = (md.chapters || []).map(function(ch){
         return { chapter: ch.chapter, name: ch.name || ("第 " + (ch.chapter + 1) + " 章"),
-          stages: (ch.stages || []).map(function(s){ return { stage: s.stage, cleared: !!s.cleared, current: !!s.current }; }) };
+          stages: (ch.stages || []).map(function(s){ return { stage: s.stage, cleared: !!s.cleared, current: !!s.current, occurred: (s.occurred !== undefined ? !!s.occurred : (!!s.cleared || !!s.current)) }; }) };
       });
       out.maps = [];
     } else {
       out.maps = (md.maps || []).map(function(mp){
-        return { name: mp.name || "地圖",
+        return { name: mp.name || "地圖", locked: !!mp.locked,
           stars: (mp.stars || []).map(function(st){
             return { star: st.star, progress: st.progress || 0,
               stages: (st.stages || []).map(function(s){
@@ -1084,25 +1089,45 @@ function loadDemo(){
     m.story = chapNames.map(function(n, ci){ var st = []; for(var i=0;i<48;i++) st.push({ clear: ci<2?1:0, treasure: ci<2 ? (i%4) : 0 }); return { name:n, stages: st }; });
     var mkStages = function(n, clearedIdx){ var st = []; for(var i=0;i<n;i++) st.push({ clear_times: clearedIdx.indexOf(i) >= 0 ? 1 : 0 }); return st; };
     var mkStar = function(n, clearedIdx){ return { star: 0, progress: clearedIdx.length ? (Math.max.apply(null, clearedIdx) + 1) : 0, stages: mkStages(n, clearedIdx) }; };
-    /* 範例五種模式：照遊戲真實結構（15.6.1 遊戲資料），每圖關數就是遊戲裡的關數。
-       真傳說 49 圖 x 4 星、每圖 1/6/8 關，合計 281/星、1124 關；零傳說 35 圖 x 1 星，
-       每圖 1/4/6/8 關，合計 205 關；舊傳說 48 關；魔界篇 49 關。範例只先通關幾關當作預覽。 */
+    /* 範例六種模式：照遊戲真實結構（15.6.1 遊戲資料），每圖關數就是遊戲裡的關數。
+       舊傳說（傳說主戰役 Stories of Legend）49 圖 x 4 冠、每圖 1/5/6/8 關，合計 324/冠、1,296 關；
+       真傳說 49 圖 x 4 星、每圖 1/6/8 關，合計 281/星、1124 關；零傳說 35 圖、圖 0–12 有 2 冠、其餘 1 冠，
+       每圖 1/4/6/8 關，合計 278 關（205＋圖 0–12 第 2 冠 73 關）；傳奇任務（Legend Quest）48 關；魔界篇 49 關；不死篇 9 章 x 48 點、合計 432。
+       範例只先通關幾關當作預覽；未解鎖的地圖以灰階＋「未解鎖」顯示（舊傳說／真傳說圖 3 起、零傳說圖 2 起為範例未解鎖）。 */
+    var RN_NAMES = ["傳說的開始", "熱情的國家", "葡萄糖胺沙漠", "貓咪們渡海", "凝視著貓眼石", "西方街道", "鮪魚海域", "竹子島", "黏糊糊的鐘乳洞", "瓦魯肯諾火山", "千里之道", "鹹魚要塞", "軍艦島", "貓咪磨爪的走廊", "帕德嫩神殿", "退潮的海水浴場", "惡魔島", "越獄隧道", "卡彭監獄", "絲綢之路", "通向黑暗的地下道", "魔王的豪宅", "終焉宣告之夜", "大混戰", "戰爭的傷痕", "污染海洋的壞人", "連接心身的東西", "脆弱性和弱酸性", "被引導的貓咪們", "黑暗的國際城市", "加拉・巴・哥", "岩海苔半島", "惡羅斯聯邦", "亡者聚集之地", "孤島大瘟疫", "迪死你樂園", "豪來塢帝國", "小跟班海岸", "雲泥溫泉鄉", "濃濃春色島", "IT地下墓穴", "怪展會之畫", "22區", "超越大草原", "暴風雪車道", "奇點村", "最終大陸", "傳說的終點", "古代研究所"];
+    var RN_COUNTS = [8, 8, 8, 8, 6, 8, 8, 8, 8, 6, 8, 8, 8, 6, 6, 8, 8, 6, 6, 8, 6, 6, 6, 6, 8, 8, 8, 6, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 1];
     var NA_NAMES = ["真・傳說的開始", "滿腹秘境", "冒險大森林", "啪唰舊海道", "旺旺灣", "深淵窺視者", "異界城市", "無法地帶的戒律", "唏哩嘩啦半島", "貓咪們的政變", "櫻桃島", "打從魂魄的歸化", "絕滅海洋城", "流放渡假村", "困惑的魔道路", "天界酒吧坊", "澡堂大戰鬥", "道地三連山", "海洋官邸", "寄生校園的惡意", "粉粿金礦", "酩酊煉鐵廠", "被揭露的神殿之秘寶", "帝國動亂", "鋼鐵健身中心", "明星諸島", "沉睡森林的故事", "實驗島", "被遺忘的墳場", "宣告開始的早晨", "幸運快樂寺院", "怪館戲院", "多樣性都市", "東南亞・巡禮", "DNA果樹園", "古代樹迷宮", "阻擋者們的城堡", "時空的彎曲", "大災難的開始", "魔海域大港", "霹靂沸騰園", "愛情死巷子", "千年獸的靈峰", "月光自由沙灘", "追逐貓咪的故鄉", "海賊王商店街", "虛虛實實的道路", "人類貓咪化計劃", "古代神木"];
     var NA_COUNTS = [1, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 1, 6, 6, 6, 6, 6, 6, 6, 6, 8, 1];
     var ND_NAMES = ["零之領域", "時空的盡頭", "烏龜烏龜翹盆地", "烏魯魯布島滯留記", "五告厲害新世界", "我們是海洋貓咪", "產生分歧的世界", "公合海灣的魔物", "枯萎的沉思庭院", "異界之路的另一頭", "奇妙夕谷", "點心桃花源", "隱秘的摩爾摩島", "超廉價度假勝地", "滾動式管制區", "豪華郵輪鐵打泥號", "毫不設防大魔宮", "憶當年遊園森林", "海溝新市鎮", "引誘萬物真理的大渦", "嶄新旅途的啟程", "甜味自然公園", "顛倒聖墓", "睡眠的深淵", "失憶共和國", "書籍列島", "虛榮無限公司", "驚奇幻想鄉", "肌肉帝國", "美術工房藝術坊", "繼承伴隨變異的樂園", "新天際線", "愛呷便當地區", "時尚瘋到不行", "偏愛化學實驗場"];
     var ND_COUNTS = [1, 6, 6, 4, 8, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
-    var demoUncannyMaps = NA_NAMES.map(function(nm, mi){ return { name: nm, stars: [0,1,2,3].map(function(si){
+    var demoSolMaps = RN_NAMES.map(function(nm, mi){ return { name: nm, locked: mi >= 3, stars: [0,1,2,3].map(function(si){
+      var cl = (mi===0&&si===0)?[0] : (mi===1&&si===0)?[0,1] : (mi===2&&si===0)?[2] : [];
+      return mkStar(RN_COUNTS[mi], cl); }) }; });
+    var demoUncannyMaps = NA_NAMES.map(function(nm, mi){ return { name: nm, locked: mi >= 3, stars: [0,1,2,3].map(function(si){
       var cl = (mi===0&&si===0)?[0] : (mi===1&&si===0)?[0,1] : (mi===2&&si===0)?[2] : [];
       return mkStar(NA_COUNTS[mi], cl); }) }; });
-    var demoZeroMaps = ND_NAMES.map(function(nm, mi){ return { name: nm, stars:[mkStar(ND_COUNTS[mi], mi===0?[0] : mi===1?[3] : [])] }; });
+    var demoZeroMaps = ND_NAMES.map(function(nm, mi){ var nStars = mi<=12 ? 2 : 1; var stars = []; for(var si=0; si<nStars; si++){ stars.push(mkStar(ND_COUNTS[mi], si===0 ? (mi===0?[0] : mi===1?[3] : []) : [])); } return { name: nm, locked: mi >= 2, stars: stars }; });
+    /* 不死篇範例：9 章 x 48 個襲擊點全量表（與後端一致），只先標幾點已清除／現行中。
+       chapter 用後端同一組 storage id（0,1,2,4,5,6,7,8,9，跳過 3），名稱與後端一致。 */
+    var obName = function(ci){ var arc = ci<3?"世界篇":ci<6?"未來篇":"宇宙篇"; return arc+"第 "+(ci%3+1)+" 章"; };
+    var OB_STORAGE_IDS = [0,1,2,4,5,6,7,8,9];
+    var demoOutbreakChapters = [];
+    for(var ci=0; ci<9; ci++){
+      var st = [];
+      for(var i=0;i<48;i++){
+        var _cl = (ci===0 && (i===5||i===12)) || (ci===1 && i===3);
+        var _cu = (ci===0 && (i===12||i===20)) || (ci===1 && i===15);
+        st.push({ stage:i, cleared: _cl, current: _cu, occurred: _cl || _cu });
+      }
+      demoOutbreakChapters.push({ chapter: OB_STORAGE_IDS[ci], name: obName(ci), stages: st });
+    }
     m.modes = {
       aku: { key:"aku", name: MODE_NAMES.aku, available:true, total:49, cleared:12, maps:[{ name:"魔界篇", stars:[mkStar(49, [0,1,2,3,4,5,6,7,8,9,10,11])] }], chapters:[] },
-      outbreaks: { key:"outbreaks", name: MODE_NAMES.outbreaks, available:true, total:6, cleared:3, maps:[], chapters:[
-        { chapter:0, name:"世界篇第 1 章", stages:[{stage:5,cleared:true,current:false},{stage:12,cleared:true,current:true},{stage:20,cleared:false,current:true}] },
-        { chapter:1, name:"世界篇第 2 章", stages:[{stage:3,cleared:true,current:false},{stage:8,cleared:false,current:false},{stage:15,cleared:false,current:true}] } ] },
+      outbreaks: { key:"outbreaks", name: MODE_NAMES.outbreaks, available:true, total:432, cleared:3, maps:[], chapters: demoOutbreakChapters },
+      stories_of_legend: { key:"stories_of_legend", name: MODE_NAMES.stories_of_legend, available:true, total:1296, cleared:4, maps: demoSolMaps, chapters:[] },
       legend_quest: { key:"legend_quest", name: MODE_NAMES.legend_quest, available:true, total:48, cleared:20, maps:[{ name:"傳奇尋寶記", stars:[{ star:0, progress:20, stages: mkStages(48, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]).map(function(s, i){ s.tries = s.clear_times ? 1 : 0; return s; }) }] }], chapters:[] },
       uncanny: { key:"uncanny", name: MODE_NAMES.uncanny, available:true, total:1124, cleared:4, maps: demoUncannyMaps, chapters:[] },
-      zero_legends: { key:"zero_legends", name: MODE_NAMES.zero_legends, available:true, total:205, cleared:2, maps: demoZeroMaps, chapters:[] }
+      zero_legends: { key:"zero_legends", name: MODE_NAMES.zero_legends, available:true, total:278, cleared:2, maps: demoZeroMaps, chapters:[] }
     };
     m.gamaXp = 450000; m.gamaHelpers = 14; m.engineers = 9; m.shrineXp = 12000; m.playFrames = 386*3600*30;
     mode = "demo"; sessionId = null;
@@ -1143,9 +1168,9 @@ function buildPatch(){
   var storyChanges = [];
   M.story.forEach(function(ch, ci){ if(countDiff(a.story[ci], ch) > 0) storyChanges.push({ chapter: ci, stages: ch.stages.map(function(s){ return { clear_times: s.clear, treasure: s.treasure }; }) }); });
   if(storyChanges.length) patch.story = storyChanges;
-  /* 五種模式：只送被改過的（圖，星），每星送完整 clear_times 陣列；舊傳說 tries 由後端保留 */
+  /* 六種模式：只送被改過的（圖，星），每星送完整 clear_times 陣列；傳奇任務 tries 由後端保留 */
   var modesPatch = {};
-  ["aku","legend_quest","uncanny","zero_legends"].forEach(function(key){
+  ["aku","stories_of_legend","legend_quest","uncanny","zero_legends"].forEach(function(key){
     var md = M.modes[key], omd = a.modes[key];
     if(!md || !omd || !md.maps) return;
     var mapChanges = [];
@@ -1406,7 +1431,7 @@ document.addEventListener("DOMContentLoaded", function(){
     if(gold && M){ M.story[+gold.getAttribute("data-chapgold")].stages.forEach(function(s){ s.treasure = 3; if(s.clear===0) s.clear = 1; }); renderStory(); updateBar(); return; }
     var clr = e.target.closest("[data-chapclear]");
     if(clr && M){ M.story[+clr.getAttribute("data-chapclear")].stages.forEach(function(s){ s.treasure = 0; }); renderStory(); updateBar(); return; }
-    /* ---- 五種模式 ---- */
+    /* ---- 六種模式 ---- */
     var mt = e.target.closest("[data-modetoggle]");
     if(mt && M){ var ui2 = modeUIFor(mt.getAttribute("data-modetoggle")); ui2.open = !ui2.open; renderModes(); return; }
     var mm = e.target.closest("[data-modemap]");
@@ -1437,10 +1462,14 @@ document.addEventListener("DOMContentLoaded", function(){
     if(ob && M){ var op = ob.getAttribute("data-outbreak").split(":");
       var ch = M.modes.outbreaks.chapters.filter(function(c){ return c.chapter === +op[0]; })[0];
       var stg = ch.stages.filter(function(s){ return s.stage === +op[1]; })[0];
+      var occ = (stg.occurred !== undefined) ? stg.occurred : (stg.cleared || stg.current);
+      if(!occ){ toast("此襲擊尚未發生，無法修改"); return; }
       stg.cleared = !stg.cleared; renderModes(); updateBar(); return; }
     var oba = e.target.closest("[data-obclearall]");
     if(oba && M){ var ch2 = M.modes.outbreaks.chapters.filter(function(c){ return c.chapter === +oba.getAttribute("data-obclearall"); })[0];
-      ch2.stages.forEach(function(s){ s.cleared = true; }); renderModes(); updateBar(); toast("本章襲擊已全部清除"); return; }
+      var n = 0;
+      ch2.stages.forEach(function(s){ var o2 = (s.occurred !== undefined) ? s.occurred : (s.cleared || s.current); if(o2 && !s.cleared){ s.cleared = true; n++; } });
+      renderModes(); updateBar(); toast(n ? "本章已發生的襲擊已全部清除（"+n+" 個）" : "本章還沒有發生過的襲擊"); return; }
     var cp = e.target.closest("[data-copy]");
     if(cp){ var txt = document.getElementById(cp.getAttribute("data-copy")).textContent;
       if(navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ toast("📋 已複製：" + txt); }); else toast(txt); return; }
