@@ -629,7 +629,7 @@ var meta = { transfer:"", ver:"tw", inquiry:"", gvStr:"", cc:"" };
 var loaded = false;
 /* 五種模式的展開狀態：每模式記「打開的地圖」與「作用中的星」（預設全部收合，避免真傳說 1,320 格一次渲染） */
 var modeUI = {};
-function modeUIFor(key){ if(!modeUI[key]) modeUI[key] = { openMap: -1, star: 0 }; return modeUI[key]; }
+function modeUIFor(key){ if(!modeUI[key]) modeUI[key] = { open: false, openMap: -1, star: 0 }; return modeUI[key]; }
 
 function emptyModel(){
   return {
@@ -801,8 +801,10 @@ function renderModes(){
     var clearedNow = 0, totalNow = 0;
     if(key === "outbreaks"){ (md.chapters || []).forEach(function(ch){ ch.stages.forEach(function(s){ totalNow++; if(s.cleared) clearedNow++; }); }); }
     else { (md.maps || []).forEach(function(mp){ mp.stars.forEach(function(st){ st.stages.forEach(function(s){ totalNow++; if(s.clear_times) clearedNow++; }); }); }); }
-    var head = '<div class="mode-row"><div class="mname">'+esc(md.name)+'</div>'+
-      '<span class="mmeta">共 '+totalNow+' 關・已通關 '+clearedNow+' 關</span></div>';
+    /* 模式本身也是可收合的選項：預設只顯示五個模式名，點開才出現裡面的大關／襲擊點 */
+    var head = '<div class="mode-row" data-modetoggle="'+key+'" style="cursor:pointer"><div class="mname">'+esc(md.name)+'</div>'+
+      '<span class="mmeta">共 '+totalNow+' 關・已通關 '+clearedNow+' 關</span><span class="mtoggle">'+(ui.open?"▲ 收合":"▼ 點開")+'</span></div>';
+    if(!ui.open) return head;
     if(key === "outbreaks") return head + md.chapters.map(function(ch){
       var clearedN = ch.stages.filter(function(s){ return s.cleared; }).length;
       return '<div class="modemap"><div class="mhead"><div class="mname">🧟 '+esc(ch.name)+'</div>'+
@@ -1399,6 +1401,8 @@ document.addEventListener("DOMContentLoaded", function(){
     var clr = e.target.closest("[data-chapclear]");
     if(clr && M){ M.story[+clr.getAttribute("data-chapclear")].stages.forEach(function(s){ s.treasure = 0; }); renderStory(); updateBar(); return; }
     /* ---- 五種模式 ---- */
+    var mt = e.target.closest("[data-modetoggle]");
+    if(mt && M){ var ui2 = modeUIFor(mt.getAttribute("data-modetoggle")); ui2.open = !ui2.open; renderModes(); return; }
     var mm = e.target.closest("[data-modemap]");
     if(mm && M){ var mp = mm.getAttribute("data-modemap").split(":"); var ui = modeUIFor(mp[0]);
       ui.openMap = (ui.openMap === +mp[1]) ? -1 : +mp[1]; ui.star = 0; renderModes(); return; }
