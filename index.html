@@ -1051,6 +1051,7 @@ function upTick(){
   if(upPhase === "edit") el.textContent = "正在把修改送到後端…（已等 " + upSecs + " 秒，雲端後端剛喚醒時這步可能要等約 1 分鐘）";
   else if(upPhase === "upload") el.textContent = "正在上傳到遊戲伺服器…（已等 " + upSecs + " 秒，請不要關掉頁面）";
   else if(upPhase === "retry") el.textContent = "後端沒回應，自動重試中…（已等 " + upSecs + " 秒）";
+  else if(upPhase === "recover") el.textContent = "連線失效，正在用同一組號碼自動重新下載…（已等 " + upSecs + " 秒）";
 }
 function upStop(){ if(upTimer){ clearInterval(upTimer); upTimer = null; } }
 function doConfirm(){
@@ -1071,21 +1072,54 @@ function doConfirm(){
   $("#upSub").textContent = "正在透過後端把修改送出，請稍等。";
   upSecs = 0; upPhase = "edit"; upTimer = setInterval(upTick, 1000);
   var payload = buildPatch();
-  apiRetry("/api/save/" + sessionId + "/edit", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }, 1)
+  /* 連線失效時自動恢復：後端休眠後記憶體裡的連線會消失，但遊戲伺服器仍持有原存檔，
+     所以用同一組號碼重新下載就能拿到新連線，再把目前的修改重新送出、上傳，
+     使用者不用重做。最多恢復一次；再失敗就顯示手動流程。 */
+  var recoverSession = function(){
+    var tc = meta.transfer;
+    var cc = ($("#confirmCode").value || "").replace(/\D/g, "");
+    var ak = ($("#accessKey").value || "").trim();
+    if(!tc || cc.length !== 4) return Promise.reject(new Error("連線階段已失效，請重新下載存檔。"));
+    var ccSend = meta.ver === "jp" ? "ja" : meta.ver;
+    upPhase = "recover";
+    $("#upSub").textContent = "後端休眠導致連線失效，正在用同一組號碼自動重新下載…";
+    return apiRetry("/api/download", { method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ transfer_code: tc, confirmation_code: cc, cc: ccSend, access_key: ak }) }, 2)
+    .then(function(j){
+      if(!j.ok) throw new Error(errText(j));
+      sessionId = j.session_id;
+    });
+  };
+  var throwErr = function(j){ var e = new Error(errText(j)); e.code = j.error; throw e; };
+  var runFlow = function(){
+    return apiRetry("/api/save/" + sessionId + "/edit", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }, 1)
+    .then(function(j){
+      if(!j.ok) throwErr(j);
+      steps[0].classList.add("done"); steps[0].querySelector(".dot").textContent = "✓";
+      if(j.warnings && j.warnings.length) $("#warnList").innerHTML = j.warnings.map(function(w){ return "<li>⚠️ " + esc(w) + "</li>"; }).join("");
+      if(M.unban) return api("/api/save/" + sessionId + "/unban", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+      return null;
+    })
+    .then(function(uj){
+      if(uj && !uj.ok) throwErr(uj);
+      upPhase = "upload";
+      return apiRetry("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" }, 2);
+    })
+    .then(function(j){
+      if(!j.ok) throwErr(j);
+      return j;
+    });
+  };
+  var attempt = function(recovered){
+    return runFlow().catch(function(e){
+      if(!recovered && e && e.code === "session_not_found"){
+        return recoverSession().then(function(){ return attempt(true); });
+      }
+      throw e;
+    });
+  };
+  attempt(false)
   .then(function(j){
-    if(!j.ok) throw new Error(errText(j));
-    steps[0].classList.add("done"); steps[0].querySelector(".dot").textContent = "✓";
-    if(j.warnings && j.warnings.length) $("#warnList").innerHTML = j.warnings.map(function(w){ return "<li>⚠️ " + esc(w) + "</li>"; }).join("");
-    if(M.unban) return api("/api/save/" + sessionId + "/unban", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
-    return null;
-  })
-  .then(function(uj){
-    if(uj && !uj.ok) throw new Error(errText(uj));
-    upPhase = "upload";
-    return apiRetry("/api/save/" + sessionId + "/upload", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" }, 2);
-  })
-  .then(function(j){
-    if(!j.ok) throw new Error(errText(j));
     upStop();
     steps[1].classList.add("done"); steps[1].querySelector(".dot").textContent = "✓";
     steps[2].classList.add("done"); steps[2].querySelector(".dot").textContent = "✓";
