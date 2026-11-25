@@ -814,7 +814,7 @@ function renderCats(){
       '<div class="cid">編號 '+c.id+'</div><div class="cname">'+esc(c.name || ("貓咪 #"+c.id))+'</div>'+
       (c.rarity ? '<span class="rar">'+esc(c.rarity)+'</span>' : '')+
       (maxNote ? '<div class="cmeta" style="font-size:12px;color:var(--ink3)">'+maxNote+'</div>' : '')+
-      '<div class="lvrow"><label>Lv</label><input class="num" type="number" min="1" max="'+MAXV.cat_level+'" data-catlv="'+i+'" value="'+c.level+'">'+
+      '<div class="lvrow"><label>Lv</label><input class="num" type="number" min="1" max="'+(c.max_base || MAXV.cat_level)+'" data-catlv="'+i+'" value="'+c.level+'">'+
       '<label>+</label><input class="num" type="number" min="0" max="'+MAXV.cat_plus+'" data-catplus="'+i+'" value="'+c.plus+'"></div>'+
       '<div class="frow"><div><label>目前型態</label><select data-catform="'+i+'">'+formOpts(c.current_form)+'</select></div>'+
       '<div><label>已解鎖型態</label><select data-catunlockform="'+i+'">'+unlockOpts(c.unlocked_forms)+'</select></div></div></div>';
@@ -1044,7 +1044,8 @@ function modelFromBackend(save, summary){
       max_base: c.max_base || null, max_plus: c.max_plus || null,
       unlocked: !!c.unlocked,
       level: c.level || 1, plus: c.plus || 0, current_form: c.current_form || 0,
-      unlocked_forms: c.unlocked_forms || 0, fourth_form: c.fourth_form || 0 };
+      unlocked_forms: c.unlocked_forms || 0, fourth_form: c.fourth_form || 0,
+      talents: c.talents || null };
   });
   m.story = (save.story || []).map(function(ch){
     return { name: ch.name || "主線章節", stages: (ch.stages || []).map(function(s){
@@ -1166,7 +1167,36 @@ function loadDemo(){
     var effs = ["善攻","耐打","超傷害","減傷","增傷"];
     var oid = 0;
     attrs.forEach(function(a){ effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"A", target:a, effect: e }); m.orbs[oid] = oid % 5; oid++; }); });
-    effs.forEach(function(e){ m.orbInfos.push({ id: oid, rank:"S", target:null, effect: e }); oid++; });
+    /* 範例特殊玉：用遊戲資料的真實效果原文與各級數值（19 種 × D/C/B/A/S，id 沿用範例假 id、不與真實特殊玉 205–299 衝突），
+       讓 specialOrbText 能顯示「D級 死後小烈波 3%」這種格式。數值來自後端 orb_infos 的 value 欄（遊戲資料 equipmentlist）。 */
+    var spOrbs = [
+      ["遺留小烈波%@", [[3],[6],[10],[14],[20]]],
+      ["抗波耐性%@", [[5],[10],[20],[30],[50]]],
+      ["金錢回饋%@", [[5],[10],[20],[30],[50]]],
+      ["抗飛耐性%@", [[5],[10],[20],[30],[50]]],
+      ["傳奇故事強化%@", [[5,5],[10,10],[20,20],[30,30],[50,50]]],
+      ["超生命體特效%@", [[105,95],[115,90],[125,85],[140,80],[160,70]]],
+      ["貓咪砲充電%@", [[3],[5],[7],[10],[15]]],
+      ["抗毒擊耐性%@", [[5],[10],[20],[30],[50]]],
+      ["全攻擊無效%@", [[1,30],[3,30],[5,30],[7,30],[10,30]]],
+      ["動慢耐性%@", [[5],[10],[20],[30],[50]]],
+      ["抗古代詛咒耐性%@", [[5],[10],[20],[30],[50]]],
+      ["真傳奇故事強化%@", [[5,5],[10,10],[20,20],[30,30],[50,50]]],
+      ["1次烈波反擊%@", [[10],[30],[50],[70],[100]]],
+      ["打倒敵人攻擊力上升%@", [[3],[6],[10],[14],[20]]],
+      ["縮短生產時間%@", [[2],[4],[7],[10],[15]]],
+      ["動止耐性%@", [[5],[10],[20],[30],[50]]],
+      ["抗擊耐性%@", [[5],[10],[20],[30],[50]]],
+      ["生產成本折扣%@", [[5],[10],[15],[20],[30]]],
+      ["抗烈波耐性%@", [[5],[10],[20],[30],[50]]]
+    ];
+    var spRanks = ["D","C","B","A","S"];
+    spOrbs.forEach(function(sp){
+      spRanks.forEach(function(rk, ri){
+        m.orbInfos.push({ id: oid, rank: rk, target: null, effect: sp[0], value: sp[1][ri] });
+        m.orbs[oid] = oid % 5; oid++;
+      });
+    });
     var chapNames = ["世界篇 第1章","世界篇 第2章","世界篇 第3章","未來篇 第1章","未來篇 第2章","未來篇 第3章","宇宙篇 第1章","宇宙篇 第2章","宇宙篇 第3章"];
     m.story = chapNames.map(function(n, ci){ var st = []; for(var i=0;i<48;i++) st.push({ clear: ci<2?1:0, treasure: ci<2 ? (i%4) : 0 }); return { name:n, stages: st }; });
     var mkStages = function(n, clearedIdx){ var st = []; for(var i=0;i<n;i++) st.push({ clear_times: clearedIdx.indexOf(i) >= 0 ? 1 : 0 }); return st; };
@@ -1491,19 +1521,21 @@ function applyQuickPreviews(){
     var s0c = JSON.parse(quickSnap.cats);
     M.cats.forEach(function(c, i){
       var o = s0c[i]; if(!o) return;
-      if(bulkOps.unlock_all_cats) c.unlocked = true; else c.unlocked = o.unlocked;
+      if(bulkOps.unlock_all_cats || bulkOps.max_all_cats) c.unlocked = true; else c.unlocked = o.unlocked;
       if(bulkOps.max_all_cats && typeof o.max_base === "number"){
         c.level = o.max_base; c.plus = o.max_plus || 0;
         var hf = highestForm(o);
         c.current_form = hf;
         if(hf === 3){ c.unlocked_forms = 3; c.fourth_form = 2; }
         else { c.unlocked_forms = Math.max(c.unlocked_forms || 0, hf + 1); c.fourth_form = o.fourth_form || 0; }
+        /* 同時把本能升到滿級（各本能自己的 max_level；沒有本能的貓不動） */
+        if(c.talents){ c.talents.forEach(function(t){ if(typeof t.max_level === "number") t.level = t.max_level; }); }
       }
-      else if(!bulkOps.max_all_cats){ c.level = o.level; c.plus = o.plus; c.current_form = o.current_form; c.unlocked_forms = o.unlocked_forms; c.fourth_form = o.fourth_form; }
+      else if(!bulkOps.max_all_cats){ c.level = o.level; c.plus = o.plus; c.current_form = o.current_form; c.unlocked_forms = o.unlocked_forms; c.fourth_form = o.fourth_form; c.talents = o.talents ? JSON.parse(JSON.stringify(o.talents)) : o.talents; }
     });
   } else if(quickSnap.cats){
     var s0c2 = JSON.parse(quickSnap.cats);
-    M.cats.forEach(function(c, i){ var o = s0c2[i]; if(!o) return; c.unlocked = o.unlocked; c.level = o.level; c.plus = o.plus; c.current_form = o.current_form; c.unlocked_forms = o.unlocked_forms; c.fourth_form = o.fourth_form; });
+    M.cats.forEach(function(c, i){ var o = s0c2[i]; if(!o) return; c.unlocked = o.unlocked; c.level = o.level; c.plus = o.plus; c.current_form = o.current_form; c.unlocked_forms = o.unlocked_forms; c.fourth_form = o.fourth_form; c.talents = o.talents ? JSON.parse(JSON.stringify(o.talents)) : o.talents; });
     delete quickSnap.cats;
   }
   if(bulkOps.clear_story || bulkOps.max_treasures){
@@ -1650,7 +1682,7 @@ document.addEventListener("DOMContentLoaded", function(){
     if(!M) return;
     var inp = e.target.closest("[data-input]");
     if(inp){ var p = inp.getAttribute("data-input"); setPath(p, clamp(inp.value, 0, maxFor(p))); updateBar(); if(p==="scalars.catfood") updateOverview(); return; }
-    var lv = e.target.closest("[data-catlv]"); if(lv){ M.cats[+lv.getAttribute("data-catlv")].level = clamp(lv.value, 1, MAXV.cat_level); updateBar(); return; }
+    var lv = e.target.closest("[data-catlv]"); if(lv){ var _ci = +lv.getAttribute("data-catlv"); M.cats[_ci].level = clamp(lv.value, 1, M.cats[_ci].max_base || MAXV.cat_level); updateBar(); return; }
     var pl = e.target.closest("[data-catplus]"); if(pl){ M.cats[+pl.getAttribute("data-catplus")].plus = clamp(pl.value, 0, MAXV.cat_plus); updateBar(); return; }
     var em = e.target.closest("[data-endlessmins]"); if(em){ M.battleItems[+em.getAttribute("data-endlessmins")].endlessMins = clamp(em.value, 1, 100000); updateBar(); return; }
     var rg = e.target.closest("[data-chaprange]");
