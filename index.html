@@ -626,6 +626,9 @@ var MODE_NAMES = { aku:"魔界篇", outbreaks:"不死篇（殭屍襲擊）", sto
 var M = null;          /* 目前模型 */
 var S0 = null;         /* 載入時快照（JSON 字串） */
 var bulkOps = {};      /* 一鍵批次（上傳時送出） */
+/* 全貓解鎖／全貓升滿要跳過的貓（使用者 2026-11-26 要求）：673 ネコチーター。
+   這隻貓不能出現在這兩個批次選項裡（預覽不動牠、後端也不動牠）；手動單隻改牠仍可改。 */
+var BULK_EXCLUDED_CAT_IDS = { 673: true };
 var quickSnap = {};    /* 一鍵預覽開啟前，貓咪／主線區塊的原始狀態（取消時還原） */
 var sessionId = null;
 var mode = "none";     /* backend | demo | backup */
@@ -1524,6 +1527,7 @@ function applyQuickPreviews(){
     var s0c = JSON.parse(quickSnap.cats);
     M.cats.forEach(function(c, i){
       var o = s0c[i]; if(!o) return;
+      if(BULK_EXCLUDED_CAT_IDS[c.id]) return; /* ネコチーター不參與全貓解鎖／全貓升滿 */
       if(bulkOps.unlock_all_cats || bulkOps.max_all_cats) c.unlocked = true; else c.unlocked = o.unlocked;
       if(bulkOps.max_all_cats && typeof o.max_base === "number"){
         c.level = o.max_base; c.plus = o.max_plus || 0;
