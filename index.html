@@ -854,9 +854,12 @@ function renderModes(){
     var clearedNow = 0, totalNow = 0;
     if(key === "outbreaks"){ (md.chapters || []).forEach(function(ch){ ch.stages.forEach(function(s){ totalNow++; if(s.cleared) clearedNow++; }); }); }
     else { (md.maps || []).forEach(function(mp){ mp.stars.forEach(function(st){ st.stages.forEach(function(s){ totalNow++; if(s.clear_times) clearedNow++; }); }); }); }
-    /* 模式本身也是可收合的選項：預設只顯示六個模式名，點開才出現裡面的大關／襲擊點 */
+    /* 模式本身也是可收合的選項：預設只顯示六個模式名，點開才出現裡面的大關／襲擊點；
+       三個傳說（舊／真／零）各有一鍵全通按鈕，點下去該傳說全部關卡都通關，不用逐星點 */
+    var clearModeBtn = (key === "stories_of_legend" || key === "uncanny" || key === "zero_legends")
+      ? '<button class="btn btn-ghost btn-small" data-modeclearmode="'+key+'">🏁 一鍵全通</button>' : '';
     var head = '<div class="mode-row" data-modetoggle="'+key+'" style="cursor:pointer"><div class="mname">'+esc(md.name)+'</div>'+
-      '<span class="mmeta">共 '+totalNow+' 關・已通關 '+clearedNow+' 關</span><span class="mtoggle">'+(ui.open?"▲ 收合":"▼ 點開")+'</span></div>';
+      '<span class="mmeta">共 '+totalNow+' 關・已通關 '+clearedNow+' 關</span>'+clearModeBtn+'<span class="mtoggle">'+(ui.open?"▲ 收合":"▼ 點開")+'</span></div>';
     if(!ui.open) return head;
     if(key === "outbreaks") return head + md.chapters.map(function(ch){
       var clearedN = ch.stages.filter(function(s){ return s.cleared; }).length;
@@ -1625,6 +1628,23 @@ document.addEventListener("DOMContentLoaded", function(){
     var clr = e.target.closest("[data-chapclear]");
     if(clr && M){ M.story[+clr.getAttribute("data-chapclear")].stages.forEach(function(s){ s.treasure = 0; }); renderStory(); updateBar(); return; }
     /* ---- 六種模式 ---- */
+    /* 一鍵全通（舊傳說／真傳說／零傳說）：該傳說全部關卡都通關，不用逐星點；
+       放在 data-modetoggle 之前檢查，否則按鈕在 mode-row 裡會被當成收合切換 */
+    var mcm = e.target.closest("[data-modeclearmode]");
+    if(mcm && M){ var mk = mcm.getAttribute("data-modeclearmode");
+      var a2 = JSON.parse(S0);
+      var newly = 0;
+      (M.modes[mk].maps || []).forEach(function(mp, mi){
+        (mp.stars || []).forEach(function(st, si){
+          (st.stages || []).forEach(function(s, sgi){
+            var os3 = a2.modes[mk].maps[mi] && a2.modes[mk].maps[mi].stars[si] && a2.modes[mk].maps[mi].stars[si].stages[sgi];
+            var before = s.clear_times;
+            s.clear_times = Math.max(s.clear_times, os3 ? os3.clear_times : 0, 1);
+            if(!before && s.clear_times) newly++;
+          });
+        });
+      });
+      renderModes(); updateBar(); toast(MODE_NAMES[mk] + "已全部通關（新通關 " + newly + " 關）"); return; }
     var mt = e.target.closest("[data-modetoggle]");
     if(mt && M){ var ui2 = modeUIFor(mt.getAttribute("data-modetoggle")); ui2.open = !ui2.open; renderModes(); return; }
     var mm = e.target.closest("[data-modemap]");
