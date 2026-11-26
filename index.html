@@ -411,7 +411,7 @@ footer a{color:var(--ink2)}
     <div class="card panel" data-panel="base">
       <h3>加碼多多</h3>
       <div class="rows" id="gamaRows"></div>
-      <div class="note" id="gamaNote">加碼多多等級由經驗值決定，遊戲會依經驗值自動計算等級；隊員人數為目前編制，僅供查看。</div>
+      <div class="note" id="gamaNote">加碼多多等級最高 130 級；隊員滿編 10 位。</div>
       <h3>貓咪砲與城堡開發助手</h3>
       <div class="rows" id="ototoRows"></div>
       <div id="cannonList"></div>
@@ -650,7 +650,7 @@ function emptyModel(){
     catamins:[0,0,0],
     orbs:{}, orbInfos:[],
     cats:[], story:[], modes:{},
-    gamaXp:0, gamaHelpers:[], gamaMembers:[], engineers:0, maxEngineers:5, cannons:[], shrineXp:0, modesUnlockAll:false,
+    gamaLevel:1, gamaMaxLevel:130, gamaHelpers:[], gamaMembers:[], engineers:0, maxEngineers:5, cannons:[], shrineXp:0, modesUnlockAll:false,
     playFrames:0, unban:false
   };
 }
@@ -689,6 +689,7 @@ function maxFor(p){
   if(p.indexOf("battleItems") === 0) return MAXV.battle_items;
   if(p.indexOf("orbs.") === 0) return MAXV.talent_orbs;
   if(p === "engineers") return (typeof M !== "undefined" && M && M.maxEngineers) || 5;
+  if(p === "gamaLevel") return (typeof M !== "undefined" && M && M.gamaMaxLevel) || 130;
   return 999999999;
 }
 function renderScalars(){
@@ -917,7 +918,7 @@ function renderBase(){
   if(!M.gamaHelpers || !M.gamaHelpers.length){
     helpersHTML += '<p class="sub">這份存檔目前沒有隊員格（加碼多多尚未編制）。</p>';
   } else {
-    helpersHTML += '<div class="rows">' + M.gamaHelpers.map(function(hid, hi){
+    helpersHTML += '<div class="rows">' + M.gamaHelpers.slice(0, 10).map(function(hid, hi){
       var nm = hid===-1 ? "空位" : ((gamaMemberById(hid) || {}).name || ("隊員 #"+hid));
       return '<div class="row-item"><div class="emoji">🧑</div><div class="meta"><div class="name">隊員 '+(hi+1)+'</div><div class="desc">'+esc(nm)+'</div></div>'+
         '<select data-gamahelper="'+hi+'" style="max-width:230px">'+gamaMemberOptions(hid)+'</select></div>';
@@ -925,7 +926,7 @@ function renderBase(){
   }
   helpersHTML += '<div style="margin:8px 0 2px"><button class="btn" id="btnLegendHelpers">⭐ 一鍵傳說隊員</button> <span class="sub">把 10 格填成傳說稀有度隊員（依隊員 id 順序前 10 位）</span></div>';
   $("#gamaRows").innerHTML =
-    rowHTML("🧭","加碼多多經驗值","探險隊經驗（等級由遊戲依經驗值計算）","gamaXp", M.gamaXp, 999999999, false) +
+    rowHTML("🧭","加碼多多等級","探險隊等級（最高 130 級）","gamaLevel", M.gamaLevel, M.gamaMaxLevel || 130, false) +
     helpersHTML;
   $("#ototoRows").innerHTML = rowHTML("👷","城堡開發助手","開發人力","engineers", M.engineers, M.maxEngineers || 5, false);
   $("#cannonList").innerHTML = M.cannons.length ? '<div class="rows">'+M.cannons.map(function(cn, ci){
@@ -1016,10 +1017,11 @@ function modelFromBackend(save, summary){
   if(Array.isArray(v.base_materials)) v.base_materials.slice(0,16).forEach(function(x,i){ m.baseMaterials[i] = x; });
   if(Array.isArray(v.talent_orbs)) v.talent_orbs.forEach(function(o){ m.orbs[o.id] = o.value; });
   if(Array.isArray(save.orb_infos)) m.orbInfos = save.orb_infos;
-  if(typeof v.gamatoto_xp === "number") m.gamaXp = v.gamatoto_xp;
-  /* 隊員：遠征隊員 member_id 陣列（-1 為空格）；舊後端只回人數時先填空格 */
-  if(Array.isArray(v.gamatoto_helpers)) m.gamaHelpers = v.gamatoto_helpers.slice();
-  else if(typeof v.gamatoto_helpers === "number"){ m.gamaHelpers = []; for(var _hi=0; _hi<v.gamatoto_helpers; _hi++) m.gamaHelpers.push(-1); }
+  if(typeof v.gamatoto_level === "number") m.gamaLevel = v.gamatoto_level;
+  if(typeof v.gamatoto_max_level === "number") m.gamaMaxLevel = v.gamatoto_max_level;
+  /* 隊員：遠征隊員 member_id 陣列（-1 為空格）；滿編只有 10 位，多的不顯示 */
+  if(Array.isArray(v.gamatoto_helpers)) m.gamaHelpers = v.gamatoto_helpers.slice(0, 10);
+  else if(typeof v.gamatoto_helpers === "number"){ m.gamaHelpers = []; for(var _hi=0; _hi<Math.min(v.gamatoto_helpers, 10); _hi++) m.gamaHelpers.push(-1); }
   if(Array.isArray(v.gamatoto_members)) m.gamaMembers = v.gamatoto_members;
   if(typeof v.ototo_engineers === "number") m.engineers = v.ototo_engineers;
   if(typeof v.ototo_max_engineers === "number" && v.ototo_max_engineers > 0) m.maxEngineers = v.ototo_max_engineers;
@@ -1248,7 +1250,7 @@ function loadDemo(){
       uncanny: { key:"uncanny", name: MODE_NAMES.uncanny, available:true, total:1124, cleared:4, maps: demoUncannyMaps, chapters:[] },
       zero_legends: { key:"zero_legends", name: MODE_NAMES.zero_legends, available:true, total:278, cleared:2, maps: demoZeroMaps, chapters:[] }
     };
-    m.gamaXp = 450000;
+    m.gamaLevel = 30; m.gamaMaxLevel = 130;
     /* 範例隊員：10 格滿編，遠征隊員 member_id（-1 為空格）；名單用遊戲資料的真名 */
     m.gamaHelpers = [1, 2, 54, 84, 109, 129, -1, -1, 3, 55];
     m.gamaMembers = [
@@ -1301,7 +1303,7 @@ function buildPatch(){
   var orbChanges = [];
   Object.keys(M.orbs).forEach(function(id){ if(a.orbs[id] !== M.orbs[id]) orbChanges.push({ id: parseInt(id,10), value: M.orbs[id] }); });
   if(orbChanges.length) patch.talent_orbs = orbChanges;
-  if(a.gamaXp !== M.gamaXp) patch.gamatoto_xp = M.gamaXp;
+  if(a.gamaLevel !== M.gamaLevel) patch.gamatoto_level = M.gamaLevel;
   if(countDiff(a.gamaHelpers, M.gamaHelpers) > 0) patch.gamatoto_helpers = M.gamaHelpers.slice();
   if(a.engineers !== M.engineers) patch.ototo_engineers = M.engineers;
   /* 貓咪砲：只有「存檔原有的砲被改」或「新砲有非零值」才送；送時含存檔原有全部砲
