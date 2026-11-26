@@ -328,6 +328,7 @@ footer a{color:var(--ink2)}
       <button data-quick="fruits">🍇 貓薄荷全滿</button>
       <button data-quick="unlock_cats">🐱 全貓解鎖</button>
       <button data-quick="max_cats">🐱 全貓升滿</button>
+      <button data-quick="block_rank_sale">🚫 屏蔽等排特賣廣告</button>
       <button data-quick="clear_story">🏁 主線全通關</button>
       <button data-quick="max_treasures">👑 寶物全金</button>
     </div>
@@ -1755,6 +1756,7 @@ document.addEventListener("DOMContentLoaded", function(){
     if(q === "fruits"){ M.catfruit = M.catfruit.map(function(){ return MAXV.catfruit; }); M.catamins = M.catamins.map(function(){ return MAXV.catamins; }); toast("🍇 貓薄荷與喵力達已全滿"); }
     if(q === "unlock_cats"){ bulkOps.unlock_all_cats = !bulkOps.unlock_all_cats; b.classList.toggle("on", !!bulkOps.unlock_all_cats); applyQuickPreviews(); toast(bulkOps.unlock_all_cats ? "已加入批次：全貓解鎖" : "已取消批次：全貓解鎖"); }
     if(q === "max_cats"){ bulkOps.max_all_cats = !bulkOps.max_all_cats; b.classList.toggle("on", !!bulkOps.max_all_cats); applyQuickPreviews(); toast(bulkOps.max_all_cats ? "已加入批次：全貓升滿" : "已取消批次：全貓升滿"); }
+    if(q === "block_rank_sale"){ bulkOps.block_rank_up_sale = !bulkOps.block_rank_up_sale; b.classList.toggle("on", !!bulkOps.block_rank_up_sale); toast(bulkOps.block_rank_up_sale ? "已加入批次：屏蔽等排特賣廣告" : "已取消批次：屏蔽等排特賣廣告"); }
     if(q === "clear_story"){ bulkOps.clear_story = !bulkOps.clear_story; b.classList.toggle("on", !!bulkOps.clear_story); applyQuickPreviews(); toast(bulkOps.clear_story ? "已加入批次：主線全通關" : "已取消批次：主線全通關"); }
     if(q === "max_treasures"){ bulkOps.max_treasures = !bulkOps.max_treasures; b.classList.toggle("on", !!bulkOps.max_treasures); applyQuickPreviews(); toast(bulkOps.max_treasures ? "已加入批次：寶物全金（金寶＋通關）" : "已取消批次：寶物全金"); }
     renderAll();
